@@ -1,0 +1,39 @@
+{
+  "buildCommand": "bun run build",
+  "devCommand": "bun run dev",
+  "installCommand": "bun install",
+  "framework": "nextjs",
+  "regions": ["sin1"],
+  "env": {
+    "DATABASE_URL": {
+      "description": "PostgreSQL connection string with Supabase Transaction Mode",
+      "required": true
+    },
+    "NEXTAUTH_URL": {
+      "description": "Production URL for NextAuth",
+      "required": true
+    },
+    "NEXTAUTH_SECRET": {
+      "description": "Secret for NextAuth (generate with: openssl rand -base64 32)",
+      "required": true
+    },
+    "NODE_ENV": {
+      "description": "Environment (production or staging)",
+      "required": false,
+      "value": "production"
+    },
+    "APP_URL": {
+      "description": "Application URL",
+      "required": false,
+      "value": ""
+    },
+    "ENCRYPTION_KEY": {
+      "description": "Encryption key for sensitive data (generate with: openssl rand -base64 32)",
+      "required": true
+    },
+    "CSRF_SECRET": {
+      "description": "CSRF secret (generate with: openssl rand -base64 16)",
+      "required": true
+    }
+  }
+}
