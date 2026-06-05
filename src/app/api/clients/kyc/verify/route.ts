@@ -29,6 +29,7 @@ export async function POST(request: NextRequest) {
     const formData = await request.formData();
     const clientId = formData.get('clientId') as string;
     const action = formData.get('action') as string;
+    const notes = formData.get('notes') as string;
 
     if (!clientId || !action) {
       return NextResponse.json(
@@ -38,8 +39,9 @@ export async function POST(request: NextRequest) {
     }
 
     const kycStatus = action === 'verify' ? 'VERIFIED' : 'REJECTED';
+    const rejectNotes = (action === 'reject' && notes) ? notes : undefined;
 
-    const result = await verifyKyc(clientId, kycStatus);
+    const result = await verifyKyc(clientId, kycStatus, rejectNotes);
 
     if (!result.success) {
       return NextResponse.json(

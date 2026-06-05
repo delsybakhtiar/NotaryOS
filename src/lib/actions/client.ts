@@ -450,6 +450,7 @@ export async function verifyKyc(clientId: string, kycStatus: 'VERIFIED' | 'REJEC
         kycStatus: kycStatus as any,
         kycVerifiedAt: kycStatus === 'VERIFIED' ? new Date() : null,
         kycVerifiedBy: kycStatus === 'VERIFIED' ? user.id : null,
+        kycRejectNotes: kycStatus === 'REJECTED' ? notes : null,
       },
     });
 

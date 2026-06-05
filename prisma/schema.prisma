@@ -198,6 +198,7 @@ model Client {
   kycStatus       KycStatus    @default(PENDING)
   kycVerifiedAt   DateTime?
   kycVerifiedBy   String?      // User ID
+  kycRejectNotes  String?      // Notes for rejection reason
   ktpUrl          String?      // KTP document path (for individual)
   npwpUrl         String?      // NPWP document path (for individual/corporate)
   
