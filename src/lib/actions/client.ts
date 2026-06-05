@@ -391,6 +391,7 @@ export async function updateClient(id: string, formData: FormData) {
     // Revalidate path
     revalidatePath('/dashboard/clients');
     revalidatePath(`/dashboard/clients/${id}`);
+    revalidatePath(`/dashboard/clients/${id}/edit`);
 
     return {
       success: true,
@@ -398,10 +399,10 @@ export async function updateClient(id: string, formData: FormData) {
     };
   } catch (error: any) {
     console.error('Error updating client:', error);
-    if (error.name === 'ZodError') {
+    if (error.issues) {
       return {
         success: false,
-        error: 'Validasi gagal: ' + error.errors.map((e: any) => e.message).join(', '),
+        error: 'Validasi gagal: ' + error.issues.map((e: any) => e.message).join(', '),
       };
     }
     return {

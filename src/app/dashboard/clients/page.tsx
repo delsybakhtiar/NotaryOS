@@ -242,11 +242,13 @@ async function ClientsPage({
                   </TableRow>
                 ) : (
                   clients.map((client) => (
-                    <TableRow key={client.id}>
+                    <TableRow key={client.id} className="cursor-pointer hover:bg-accent">
                       <TableCell className="font-medium">{client.clientCode}</TableCell>
                       <TableCell>
                         <div>
-                          <div className="font-medium">{client.name}</div>
+                          <Link href={`/dashboard/clients/${client.id}`} className="font-medium hover:underline">
+                            {client.name}
+                          </Link>
                           {client.nik && <div className="text-xs text-muted-foreground">NIK: {client.nik}</div>}
                           {client.npwp && <div className="text-xs text-muted-foreground">NPWP: {client.npwp}</div>}
                         </div>
