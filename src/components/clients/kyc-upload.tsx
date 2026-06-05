@@ -118,21 +118,22 @@ export function KycUpload({
             </p>
           </div>
           {!disabled && (
-            <input
-              type="file"
-              accept="image/*,.pdf"
-              onChange={handleFileSelect}
-              className="hidden"
-              id={`upload-${label.replace(/\s+/g, '-')}`}
-            />
-            {!disabled && (
+            <>
+              <input
+                type="file"
+                accept="image/*,.pdf"
+                onChange={handleFileSelect}
+                className="hidden"
+                id={`upload-${label.replace(/\s+/g, '-')}`}
+              />
               <label
                 htmlFor={`upload-${label.replace(/\s+/g, '-')}`}
                 className="sr-only"
               >
                 Upload {label}
               </label>
-            )}
+            </>
+          )}
         </div>
       </CardContent>
     </Card>

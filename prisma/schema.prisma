@@ -233,10 +233,8 @@ model Client {
 enum DocumentStatus {
   DRAFT
   REVIEW
-  APPROVED
-  SIGNED
+  SIGNING
   ARCHIVED
-  REJECTED
 }
 
 enum DocumentType {
