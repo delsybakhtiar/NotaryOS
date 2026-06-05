@@ -158,6 +158,12 @@ enum ClientStatus {
   BLACKLISTED
 }
 
+enum KycStatus {
+  PENDING
+  VERIFIED
+  REJECTED
+}
+
 model Client {
   id              String       @id @default(cuid())
   
@@ -165,6 +171,9 @@ model Client {
   clientCode      String       @unique // e.g., "CLI-2024-0001"
   clientType      ClientType
   status          ClientStatus @default(ACTIVE)
+  
+  // Name (unified for individual and corporate)
+  name            String       // Full name for individual, company name for corporate
   
   // Individual fields
   firstName       String?
@@ -174,7 +183,6 @@ model Client {
   placeOfBirth    String?
   
   // Corporate fields
-  companyName     String?
   npwp            String?      @unique
   companyType     String?      // e.g., "PT", "CV", "Firma"
   
@@ -187,7 +195,7 @@ model Client {
   postalCode      String?
   
   // KYC & Documents
-  kycVerified     Boolean      @default(false)
+  kycStatus       KycStatus    @default(PENDING)
   kycVerifiedAt   DateTime?
   kycVerifiedBy   String?      // User ID
   
@@ -209,6 +217,7 @@ model Client {
   @@index([clientCode])
   @@index([clientType])
   @@index([status])
+  @@index([kycStatus])
   @@index([nik])
   @@index([npwp])
   @@index([qrCode])
