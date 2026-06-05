@@ -35,7 +35,7 @@ import { id as idLocale } from 'date-fns/locale';
 async function ClientsPage({
   searchParams,
 }: {
-  searchParams: { search?: string; type?: string; kyc?: string; status?: string };
+  searchParams: Promise<{ search?: string; type?: string; kyc?: string; status?: string }>;
 }) {
   const session = await getServerSession(authOptions);
 
@@ -48,11 +48,14 @@ async function ClientsPage({
     redirect('/dashboard');
   }
 
+  // Await searchParams
+  const params = await searchParams;
+
   const filters = {
-    search: searchParams.search,
-    clientType: searchParams.type,
-    kycStatus: searchParams.kyc,
-    status: searchParams.status,
+    search: params.search,
+    clientType: params.type,
+    kycStatus: params.kyc,
+    status: params.status,
   };
 
   const result = await getClients(filters);
@@ -168,14 +171,14 @@ async function ClientsPage({
                   name="search"
                   placeholder="Cari nama, email, telepon, NIK, atau NPWP..."
                   className="pl-10"
-                  defaultValue={searchParams.search || ''}
+                  defaultValue={params.search || ''}
                 />
               </div>
             </div>
             <select
               name="type"
               className="flex h-10 w-[180px] items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-              defaultValue={searchParams.type || ''}
+              defaultValue={params.type || ''}
             >
               <option value="">Semua Tipe</option>
               <option value="INDIVIDUAL">Individual</option>
@@ -184,7 +187,7 @@ async function ClientsPage({
             <select
               name="kyc"
               className="flex h-10 w-[180px] items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-              defaultValue={searchParams.kyc || ''}
+              defaultValue={params.kyc || ''}
             >
               <option value="">Semua KYC</option>
               <option value="PENDING">Pending</option>
@@ -305,14 +308,43 @@ async function ClientsPage({
                                 Edit
                               </Link>
                             </DropdownMenuItem>
-                            {session.user.role === 'ADMIN' && (
+                            {session.user.role === 'ADMIN' && client.kycStatus === 'PENDING' && (
                               <>
                                 <DropdownMenuSeparator />
                                 <DropdownMenuItem asChild>
-                                  <Link href={`/dashboard/clients/${client.id}/kyc`}>
-                                    <ShieldCheck className="mr-2 h-4 w-4" />
-                                    Verifikasi KYC
-                                  </Link>
+                                  <form action="/api/clients/kyc/verify" method="POST">
+                                    <input type="hidden" name="clientId" value={client.id} />
+                                    <input type="hidden" name="action" value="verify" />
+                                    <button type="submit" className="flex items-center w-full">
+                                      <ShieldCheck className="mr-2 h-4 w-4 text-green-600" />
+                                      <span className="text-green-600">Setujui KYC</span>
+                                    </button>
+                                  </form>
+                                </DropdownMenuItem>
+                                <DropdownMenuItem asChild>
+                                  <form action="/api/clients/kyc/verify" method="POST">
+                                    <input type="hidden" name="clientId" value={client.id} />
+                                    <input type="hidden" name="action" value="reject" />
+                                    <button type="submit" className="flex items-center w-full">
+                                      <ShieldX className="mr-2 h-4 w-4 text-red-600" />
+                                      <span className="text-red-600">Tolak KYC</span>
+                                    </button>
+                                  </form>
+                                </DropdownMenuItem>
+                              </>
+                            )}
+                            {session.user.role === 'ADMIN' && client.kycStatus === 'VERIFIED' && (
+                              <>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem asChild>
+                                  <form action="/api/clients/kyc/verify" method="POST">
+                                    <input type="hidden" name="clientId" value={client.id} />
+                                    <input type="hidden" name="action" value="reject" />
+                                    <button type="submit" className="flex items-center w-full">
+                                      <ShieldX className="mr-2 h-4 w-4 text-red-600" />
+                                      <span className="text-red-600">Batalkan KYC</span>
+                                    </button>
+                                  </form>
                                 </DropdownMenuItem>
                               </>
                             )}
