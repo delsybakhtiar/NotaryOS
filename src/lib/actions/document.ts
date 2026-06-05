@@ -1,418 +1,181 @@
 'use server';
 
-import { auth } from '@/lib/auth';
+// ============================================
+// DOCUMENT SERVER ACTIONS
+// CRUD operations with audit logging and version control
+// ============================================
+
 import { db } from '@/lib/db';
-import { auditLog } from '@/lib/audit-logger';
+import { logCreate, logUpdate, logDelete } from '@/lib/audit-logger';
 import {
   CreateDocumentSchema,
   UpdateDocumentSchema,
   TransitionStatusSchema,
-  FilterDocumentsSchema,
-  type CreateDocumentInput,
-  type UpdateDocumentInput,
-  type TransitionStatusInput,
+  CreateVersionSchema,
+  isValidStatusTransition,
 } from '@/lib/validations/document';
-import {
-  isValidTransition,
-  canTransitionDocument,
-  getTransitionDetails,
-} from '@/lib/document-state-machine';
-import { DocumentStatus, DocumentType } from '@prisma/client';
-import { nanoid } from 'nanoid';
 import { revalidatePath } from 'next/cache';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
+import { redirect } from 'next/navigation';
+import { AuditAction, DocumentStatus, UserRole } from '@prisma/client';
 
-// Helper: Generate document number
+// Helper function to get current user session
+async function getCurrentUser() {
+  const session = await getServerSession(authOptions);
+  if (!session?.user) {
+    return null;
+  }
+  return session.user;
+}
+
+// Helper function to generate document number
 function generateDocumentNumber(): string {
-  const now = new Date();
-  const year = now.getFullYear();
+  const year = new Date().getFullYear();
   const random = Math.floor(Math.random() * 9999).toString().padStart(4, '0');
   return `AKTA-${year}-${random}`;
 }
 
-// Helper: Generate QR code
-function generateQRCode(): string {
-  return `DOC-${nanoid(20)}`;
-}
-
-// Helper: Get current session
-async function getSession() {
-  const session = await auth();
-  if (!session?.user?.id) {
-    throw new Error('Unauthorized');
-  }
-  return session;
+// Helper function to generate QR code
+function generateQrCode(): string {
+  return `QR-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 }
 
 /**
  * Create a new document
  */
-export async function createDocument(data: CreateDocumentInput) {
+export async function createDocument(formData: FormData) {
+  const user = await getCurrentUser();
+  if (!user) {
+    return {
+      success: false,
+      error: 'Unauthorized',
+    };
+  }
+
+  // Validate role - ADMIN and STAFF can create documents
+  if (user.role !== UserRole.ADMIN && user.role !== UserRole.STAFF) {
+    return {
+      success: false,
+      error: 'Anda tidak memiliki izin untuk membuat dokumen',
+    };
+  }
+
   try {
-    const session = await getSession();
-    const userId = session.user.id;
+    const rawData = {
+      clientId: formData.get('clientId'),
+      title: formData.get('title'),
+      documentType: formData.get('documentType'),
+      description: formData.get('description'),
+      content: formData.get('content'),
+      documentDate: formData.get('documentDate'),
+      effectiveDate: formData.get('effectiveDate'),
+      parties: formData.get('parties'),
+      tags: formData.get('tags'),
+      notes: formData.get('notes'),
+    };
 
     // Validate input
-    const validated = CreateDocumentSchema.parse(data);
+    const validatedData = CreateDocumentSchema.parse(rawData);
+
+    // Generate document number and QR code
+    const documentNumber = generateDocumentNumber();
+    const qrCode = generateQrCode();
 
     // Create document
     const document = await db.document.create({
       data: {
-        documentNumber: generateDocumentNumber(),
-        documentType: validated.documentType as DocumentType,
-        title: validated.title,
-        description: validated.description,
-        content: validated.content,
-        clientId: validated.clientId,
-        documentDate: validated.documentDate,
-        effectiveDate: validated.effectiveDate,
-        parties: validated.parties,
-        notes: validated.notes,
-        tags: validated.tags,
-        qrCode: generateQRCode(),
+        documentNumber,
+        qrCode,
+        title: validatedData.title,
+        documentType: validatedData.documentType as any,
+        description: validatedData.description,
+        content: validatedData.content,
+        documentDate: validatedData.documentDate ? new Date(validatedData.documentDate as string) : null,
+        effectiveDate: validatedData.effectiveDate ? new Date(validatedData.effectiveDate as string) : null,
+        parties: validatedData.parties,
+        tags: validatedData.tags,
+        notes: validatedData.notes,
         status: DocumentStatus.DRAFT,
-        createdByUserId: userId,
+        clientId: validatedData.clientId,
+        createdByUserId: user.id,
       },
       include: {
-        createdBy: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-          },
-        },
         client: {
           select: {
             id: true,
-            name: true,
             clientCode: true,
+            name: true,
           },
         },
       },
     });
 
     // Create initial version
-    await db.documentVersion.create({
-      data: {
-        documentId: document.id,
-        version: 1,
-        content: validated.content,
-        changeNotes: 'Initial version',
-        createdBy: userId,
-      },
-    });
+    if (validatedData.content) {
+      await db.documentVersion.create({
+        data: {
+          documentId: document.id,
+          version: 1,
+          content: validatedData.content,
+          changeNotes: 'Initial version',
+          createdBy: user.id,
+        },
+      });
+    }
 
-    // Audit log
-    await auditLog({
-      userId,
-      action: 'CREATE',
-      entityType: 'Document',
-      entityId: document.id,
-      newValue: JSON.stringify({
+    // Log audit
+    await logCreate(
+      user.id,
+      'Document',
+      document.id,
+      {
         documentNumber: document.documentNumber,
         title: document.title,
-        type: document.documentType,
+        documentType: document.documentType,
         status: document.status,
-      }),
-      description: `Created new document: ${document.documentNumber} - ${document.title}`,
-    });
+      },
+    );
 
+    // Revalidate path
     revalidatePath('/dashboard/documents');
-    revalidatePath('/dashboard/documents/[id]');
+    revalidatePath('/dashboard/documents/new');
 
     return {
       success: true,
-      data: document,
+      document,
     };
   } catch (error: any) {
     console.error('Error creating document:', error);
-
-    if (error.name === 'ZodError') {
+    if (error.issues) {
       return {
         success: false,
-        error: error.errors?.[0]?.message || 'Validation error',
+        error: 'Validasi gagal: ' + error.issues.map((e: any) => e.message).join(', '),
       };
     }
-
     return {
       success: false,
-      error: error.message || 'Failed to create document',
+      error: error.message || 'Gagal membuat dokumen',
     };
   }
 }
 
 /**
- * Update a document
- */
-export async function updateDocument(data: UpdateDocumentInput) {
-  try {
-    const session = await getSession();
-    const userId = session.user.id;
-
-    // Validate input
-    const validated = UpdateDocumentSchema.parse(data);
-
-    // Get existing document
-    const existingDocument = await db.document.findUnique({
-      where: { id: validated.id },
-    });
-
-    if (!existingDocument) {
-      return {
-        success: false,
-        error: 'Document not found',
-      };
-    }
-
-    // Prepare update data
-    const updateData: any = {};
-    if (validated.title !== undefined) updateData.title = validated.title;
-    if (validated.documentType !== undefined)
-      updateData.documentType = validated.documentType as DocumentType;
-    if (validated.description !== undefined)
-      updateData.description = validated.description;
-    if (validated.content !== undefined) {
-      updateData.content = validated.content;
-
-      // Create new version when content changes
-      const latestVersion = await db.documentVersion.findFirst({
-        where: { documentId: validated.id },
-        orderBy: { version: 'desc' },
-      });
-
-      const newVersionNumber = (latestVersion?.version || 0) + 1;
-
-      await db.documentVersion.create({
-        data: {
-          documentId: validated.id,
-          version: newVersionNumber,
-          content: validated.content,
-          changeNotes: 'Content updated',
-          createdBy: userId,
-        },
-      });
-    }
-    if (validated.clientId !== undefined)
-      updateData.clientId = validated.clientId;
-    if (validated.documentDate !== undefined)
-      updateData.documentDate = validated.documentDate;
-    if (validated.effectiveDate !== undefined)
-      updateData.effectiveDate = validated.effectiveDate;
-    if (validated.parties !== undefined) updateData.parties = validated.parties;
-    if (validated.notes !== undefined) updateData.notes = validated.notes;
-    if (validated.tags !== undefined) updateData.tags = validated.tags;
-
-    // Update document
-    const updatedDocument = await db.document.update({
-      where: { id: validated.id },
-      data: updateData,
-      include: {
-        createdBy: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-          },
-        },
-        client: {
-          select: {
-            id: true,
-            name: true,
-            clientCode: true,
-          },
-        },
-      },
-    });
-
-    // Audit log
-    await auditLog({
-      userId,
-      action: 'UPDATE',
-      entityType: 'Document',
-      entityId: updatedDocument.id,
-      oldValue: JSON.stringify({
-        title: existingDocument.title,
-        content: existingDocument.content,
-      }),
-      newValue: JSON.stringify({
-        title: updatedDocument.title,
-        content: updatedDocument.content,
-      }),
-      description: `Updated document: ${updatedDocument.documentNumber} - ${updatedDocument.title}`,
-    });
-
-    revalidatePath('/dashboard/documents');
-    revalidatePath('/dashboard/documents/[id]');
-
-    return {
-      success: true,
-      data: updatedDocument,
-    };
-  } catch (error: any) {
-    console.error('Error updating document:', error);
-
-    if (error.name === 'ZodError') {
-      return {
-        success: false,
-        error: error.errors?.[0]?.message || 'Validation error',
-      };
-    }
-
-    return {
-      success: false,
-      error: error.message || 'Failed to update document',
-    };
-  }
-}
-
-/**
- * Transition document status
- */
-export async function transitionStatus(data: TransitionStatusInput) {
-  try {
-    const session = await getSession();
-    const userId = session.user.id;
-
-    // Get user role
-    const user = await db.user.findUnique({
-      where: { id: userId },
-      select: { role: true, name: true },
-    });
-
-    if (!user) {
-      return {
-        success: false,
-        error: 'User not found',
-      };
-    }
-
-    // Validate input
-    const validated = TransitionStatusSchema.parse(data);
-
-    // Get existing document
-    const existingDocument = await db.document.findUnique({
-      where: { id: validated.documentId },
-    });
-
-    if (!existingDocument) {
-      return {
-        success: false,
-        error: 'Document not found',
-      };
-    }
-
-    const currentStatus = existingDocument.status as DocumentStatus;
-    const newStatus = validated.toStatus as DocumentStatus;
-
-    // Check if transition is valid
-    if (!isValidTransition(currentStatus, newStatus)) {
-      return {
-        success: false,
-        error: `Invalid status transition from ${currentStatus} to ${newStatus}`,
-      };
-    }
-
-    // Check if user has permission
-    if (!canTransitionDocument(user.role, currentStatus, newStatus)) {
-      return {
-        success: false,
-        error: 'You do not have permission to perform this status transition',
-      };
-    }
-
-    // Get transition details
-    const transitionDetails = getTransitionDetails(currentStatus, newStatus);
-
-    // Update document status
-    const updatedDocument = await db.document.update({
-      where: { id: validated.documentId },
-      data: {
-        status: newStatus,
-        reviewedBy: newStatus === DocumentStatus.REVIEW ? userId : existingDocument.reviewedBy,
-        reviewedAt: newStatus === DocumentStatus.REVIEW ? new Date() : existingDocument.reviewedAt,
-        signedBy: newStatus === DocumentStatus.SIGNING ? userId : existingDocument.signedBy,
-        signedAt: newStatus === DocumentStatus.SIGNING ? new Date() : existingDocument.signedAt,
-      },
-      include: {
-        createdBy: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-          },
-        },
-        client: {
-          select: {
-            id: true,
-            name: true,
-            clientCode: true,
-          },
-        },
-      },
-    });
-
-    // Audit log
-    await auditLog({
-      userId,
-      action: 'UPDATE',
-      entityType: 'Document',
-      entityId: updatedDocument.id,
-      oldValue: JSON.stringify({ status: currentStatus }),
-      newValue: JSON.stringify({ status: newStatus }),
-      description: `Transitioned document ${updatedDocument.documentNumber} from ${currentStatus} to ${newStatus}: ${transitionDetails?.description}`,
-    });
-
-    revalidatePath('/dashboard/documents');
-    revalidatePath('/dashboard/documents/[id]');
-
-    return {
-      success: true,
-      data: updatedDocument,
-      message: `Document status updated to ${newStatus}`,
-    };
-  } catch (error: any) {
-    console.error('Error transitioning document status:', error);
-
-    if (error.name === 'ZodError') {
-      return {
-        success: false,
-        error: error.errors?.[0]?.message || 'Validation error',
-      };
-    }
-
-    return {
-      success: false,
-      error: error.message || 'Failed to transition document status',
-    };
-  }
-}
-
-/**
- * Get documents with filters
+ * Get all documents with pagination and filters
  */
 export async function getDocuments(filters?: {
-  status?: DocumentStatus;
-  documentType?: DocumentType;
-  clientId?: string;
   search?: string;
+  documentType?: string;
+  status?: string;
+  clientId?: string;
 }) {
+  const user = await getCurrentUser();
+  if (!user) {
+    redirect('/login');
+  }
+
   try {
-    const session = await getSession();
-    const userId = session.user.id;
-
-    // Build where clause
     const where: any = {};
-
-    if (filters?.status) {
-      where.status = filters.status;
-    }
-
-    if (filters?.documentType) {
-      where.documentType = filters.documentType;
-    }
-
-    if (filters?.clientId) {
-      where.clientId = filters.clientId;
-    }
 
     if (filters?.search) {
       where.OR = [
@@ -422,23 +185,46 @@ export async function getDocuments(filters?: {
       ];
     }
 
-    // Get documents
+    if (filters?.documentType) {
+      where.documentType = filters.documentType;
+    }
+
+    if (filters?.status) {
+      where.status = filters.status;
+    }
+
+    if (filters?.clientId) {
+      where.clientId = filters.clientId;
+    }
+
     const documents = await db.document.findMany({
       where,
       include: {
+        client: {
+          select: {
+            id: true,
+            clientCode: true,
+            name: true,
+          },
+        },
         createdBy: {
           select: {
             id: true,
             name: true,
             email: true,
+            role: true,
           },
         },
-        client: {
+        versions: {
           select: {
             id: true,
-            name: true,
-            clientCode: true,
+            version: true,
+            createdAt: true,
           },
+          orderBy: {
+            version: 'desc',
+          },
+          take: 1,
         },
       },
       orderBy: {
@@ -446,51 +232,48 @@ export async function getDocuments(filters?: {
       },
     });
 
-    // Audit log (READ action)
-    await auditLog({
-      userId,
-      action: 'READ',
-      entityType: 'Document',
-      description: 'Viewed document list',
-    });
-
     return {
       success: true,
-      data: documents,
+      documents,
     };
   } catch (error: any) {
     console.error('Error fetching documents:', error);
     return {
       success: false,
-      error: error.message || 'Failed to fetch documents',
+      error: error.message || 'Gagal mengambil data dokumen',
+      documents: [],
     };
   }
 }
 
 /**
- * Get document by ID
+ * Get a single document by ID
  */
-export async function getDocumentById(documentId: string) {
-  try {
-    const session = await getSession();
-    const userId = session.user.id;
+export async function getDocumentById(id: string) {
+  const user = await getCurrentUser();
+  if (!user) {
+    redirect('/login');
+  }
 
+  try {
     const document = await db.document.findUnique({
-      where: { id: documentId },
+      where: { id },
       include: {
+        client: {
+          select: {
+            id: true,
+            clientCode: true,
+            name: true,
+            email: true,
+            phone: true,
+          },
+        },
         createdBy: {
           select: {
             id: true,
             name: true,
             email: true,
-          },
-        },
-        client: {
-          select: {
-            id: true,
-            name: true,
-            clientCode: true,
-            clientType: true,
+            role: true,
           },
         },
         versions: {
@@ -504,82 +287,401 @@ export async function getDocumentById(documentId: string) {
     if (!document) {
       return {
         success: false,
-        error: 'Document not found',
+        error: 'Dokumen tidak ditemukan',
       };
     }
 
-    // Audit log (READ action)
-    await auditLog({
-      userId,
-      action: 'READ',
-      entityType: 'Document',
-      entityId: document.id,
-      description: `Viewed document: ${document.documentNumber} - ${document.title}`,
+    // Log read access
+    await db.auditLog.create({
+      data: {
+        userId: user.id,
+        action: AuditAction.READ,
+        entityType: 'Document',
+        entityId: document.id,
+        description: `Viewed document: ${document.documentNumber} - ${document.title}`,
+      },
     });
 
     return {
       success: true,
-      data: document,
+      document,
     };
   } catch (error: any) {
     console.error('Error fetching document:', error);
     return {
       success: false,
-      error: error.message || 'Failed to fetch document',
+      error: error.message || 'Gagal mengambil data dokumen',
     };
   }
 }
 
 /**
- * Delete a document (soft delete by archiving)
+ * Update an existing document
  */
-export async function deleteDocument(documentId: string) {
-  try {
-    const session = await getSession();
-    const userId = session.user.id;
+export async function updateDocument(id: string, formData: FormData) {
+  const user = await getCurrentUser();
+  if (!user) {
+    return {
+      success: false,
+      error: 'Unauthorized',
+    };
+  }
 
+  // Validate role
+  if (user.role !== UserRole.ADMIN && user.role !== UserRole.STAFF) {
+    return {
+      success: false,
+      error: 'Anda tidak memiliki izin untuk mengubah dokumen',
+    };
+  }
+
+  try {
     // Get existing document
     const existingDocument = await db.document.findUnique({
-      where: { id: documentId },
+      where: { id },
     });
 
     if (!existingDocument) {
       return {
         success: false,
-        error: 'Document not found',
+        error: 'Dokumen tidak ditemukan',
       };
     }
 
-    // Delete document (this will cascade delete versions)
-    const deletedDocument = await db.document.delete({
-      where: { id: documentId },
+    // Check if document is locked (signed or archived)
+    if (existingDocument.status === DocumentStatus.ARCHIVED) {
+      return {
+        success: false,
+        error: 'Dokumen yang sudah diarsipkan tidak dapat diubah',
+      };
+    }
+
+    if (existingDocument.status === DocumentStatus.SIGNING) {
+      return {
+        success: false,
+        error: 'Dokumen dalam proses penandatanganan tidak dapat diubah',
+      };
+    }
+
+    const rawData = {
+      title: formData.get('title'),
+      description: formData.get('description'),
+      content: formData.get('content'),
+      documentDate: formData.get('documentDate'),
+      effectiveDate: formData.get('effectiveDate'),
+      parties: formData.get('parties'),
+      tags: formData.get('tags'),
+      notes: formData.get('notes'),
+      changeNotes: formData.get('changeNotes'),
+    };
+
+    // Validate input
+    const validatedData = UpdateDocumentSchema.parse(rawData);
+
+    // Track content changes for versioning
+    let newContent = validatedData.content;
+    let oldContent = existingDocument.content;
+
+    // Update document
+    const updatedDocument = await db.document.update({
+      where: { id },
+      data: {
+        title: validatedData.title,
+        description: validatedData.description,
+        content: validatedData.content,
+        documentDate: validatedData.documentDate ? new Date(validatedData.documentDate as string) : undefined,
+        effectiveDate: validatedData.effectiveDate ? new Date(validatedData.effectiveDate as string) : undefined,
+        parties: validatedData.parties,
+        tags: validatedData.tags,
+        notes: validatedData.notes,
+      },
     });
 
-    // Audit log
-    await auditLog({
-      userId,
-      action: 'DELETE',
-      entityType: 'Document',
-      entityId: documentId,
-      oldValue: JSON.stringify({
-        documentNumber: existingDocument.documentNumber,
-        title: existingDocument.title,
-      }),
-      description: `Deleted document: ${existingDocument.documentNumber} - ${existingDocument.title}`,
-    });
+    // Create new version if content changed
+    if (newContent && newContent !== oldContent) {
+      // Get latest version number
+      const latestVersion = await db.documentVersion.findFirst({
+        where: { documentId: id },
+        orderBy: { version: 'desc' },
+      });
 
+      const newVersionNumber = (latestVersion?.version || 0) + 1;
+
+      await db.documentVersion.create({
+        data: {
+          documentId: id,
+          version: newVersionNumber,
+          content: newContent,
+          changeNotes: validatedData.changeNotes || 'Update',
+          createdBy: user.id,
+        },
+      });
+    }
+
+    // Log audit
+    await logUpdate(
+      user.id,
+      'Document',
+      updatedDocument.id,
+      existingDocument,
+      updatedDocument,
+    );
+
+    // Revalidate paths
     revalidatePath('/dashboard/documents');
-    revalidatePath('/dashboard/documents/[id]');
+    revalidatePath(`/dashboard/documents/${id}`);
 
     return {
       success: true,
-      data: deletedDocument,
+      document: updatedDocument,
+    };
+  } catch (error: any) {
+    console.error('Error updating document:', error);
+    if (error.issues) {
+      return {
+        success: false,
+        error: 'Validasi gagal: ' + error.issues.map((e: any) => e.message).join(', '),
+      };
+    }
+    return {
+      success: false,
+      error: error.message || 'Gagal mengubah dokumen',
+    };
+  }
+}
+
+/**
+ * Transition document status with state machine validation
+ */
+export async function transitionDocumentStatus(
+  id: string,
+  newStatus: DocumentStatus,
+  notes?: string,
+) {
+  const user = await getCurrentUser();
+  if (!user) {
+    return {
+      success: false,
+      error: 'Unauthorized',
+    };
+  }
+
+  try {
+    // Get existing document
+    const existingDocument = await db.document.findUnique({
+      where: { id },
+    });
+
+    if (!existingDocument) {
+      return {
+        success: false,
+        error: 'Dokumen tidak ditemukan',
+      };
+    }
+
+    // Validate status transition using state machine
+    if (!isValidStatusTransition(existingDocument.status, newStatus)) {
+      const allowedTransitions = getAllowedTransitions(existingDocument.status).join(', ');
+      return {
+        success: false,
+        error: `Transisi status tidak valid. Dari ${existingDocument.status}, Anda hanya dapat melanjutkan ke: ${allowedTransitions}`,
+      };
+    }
+
+    // Role-based permission checks
+    if (newStatus === DocumentStatus.SIGNING) {
+      // Only ADMIN can move to SIGNING
+      if (user.role !== UserRole.ADMIN) {
+        return {
+          success: false,
+          error: 'Hanya Notaris yang dapat mengubah status ke PENANDATANGANAN',
+        };
+      }
+    }
+
+    if (newStatus === DocumentStatus.REVIEW) {
+      // ADMIN and STAFF can move to REVIEW
+      if (user.role !== UserRole.ADMIN && user.role !== UserRole.STAFF) {
+        return {
+          success: false,
+          error: 'Anda tidak memiliki izin untuk mengubah status ke REVIEW',
+        };
+      }
+    }
+
+    // Prepare update data
+    const updateData: any = {
+      status: newStatus,
+    };
+
+    // Set reviewer info if moving to REVIEW
+    if (newStatus === DocumentStatus.REVIEW && !existingDocument.reviewedBy) {
+      updateData.reviewedBy = user.id;
+      updateData.reviewedAt = new Date();
+    }
+
+    // Set signer info if moving to SIGNING
+    if (newStatus === DocumentStatus.SIGNING && !existingDocument.signedBy) {
+      updateData.signedBy = user.id;
+      updateData.signedAt = new Date();
+      // Set document date if not set
+      if (!existingDocument.documentDate) {
+        updateData.documentDate = new Date();
+      }
+    }
+
+    // Update document status
+    const updatedDocument = await db.document.update({
+      where: { id },
+      data: updateData,
+    });
+
+    // Log audit with status change details
+    await db.auditLog.create({
+      data: {
+        userId: user.id,
+        action: AuditAction.UPDATE,
+        entityType: 'Document',
+        entityId: updatedDocument.id,
+        oldValue: JSON.stringify({ status: existingDocument.status }),
+        newValue: JSON.stringify({ status: newStatus, notes }),
+        description: `Status changed from ${existingDocument.status} to ${newStatus} for document: ${updatedDocument.documentNumber}`,
+        metadata: JSON.stringify({ notes }),
+      },
+    });
+
+    // Revalidate paths
+    revalidatePath('/dashboard/documents');
+    revalidatePath(`/dashboard/documents/${id}`);
+
+    return {
+      success: true,
+      document: updatedDocument,
+      message: `Status berhasil diubah dari ${existingDocument.status} ke ${newStatus}`,
+    };
+  } catch (error: any) {
+    console.error('Error transitioning document status:', error);
+    return {
+      success: false,
+      error: error.message || 'Gagal mengubah status dokumen',
+    };
+  }
+}
+
+/**
+ * Get allowed transitions for a document
+ */
+export async function getAllowedTransitions(documentId: string) {
+  const user = await getCurrentUser();
+  if (!user) {
+    return { success: false, error: 'Unauthorized' };
+  }
+
+  try {
+    const document = await db.document.findUnique({
+      where: { id: documentId },
+    });
+
+    if (!document) {
+      return { success: false, error: 'Dokumen tidak ditemukan' };
+    }
+
+    // Get allowed transitions based on current status
+    const transitions = getAllowedTransitionsFromStatus(document.status);
+
+    return {
+      success: true,
+      transitions,
+    };
+  } catch (error: any) {
+    console.error('Error getting allowed transitions:', error);
+    return {
+      success: false,
+      error: error.message || 'Gagal mendapatkan transisi yang diizinkan',
+    };
+  }
+}
+
+/**
+ * Helper function to get allowed transitions from status
+ */
+function getAllowedTransitionsFromStatus(currentStatus: DocumentStatus): DocumentStatus[] {
+  const transitions: Record<DocumentStatus, DocumentStatus[]> = {
+    DRAFT: [DocumentStatus.REVIEW, DocumentStatus.ARCHIVED],
+    REVIEW: [DocumentStatus.DRAFT, DocumentStatus.SIGNING, DocumentStatus.ARCHIVED],
+    SIGNING: [DocumentStatus.ARCHIVED],
+    ARCHIVED: [],
+  };
+
+  return transitions[currentStatus] || [];
+}
+
+/**
+ * Delete a document (soft delete or hard delete)
+ */
+export async function deleteDocument(id: string) {
+  const user = await getCurrentUser();
+  if (!user) {
+    return {
+      success: false,
+      error: 'Unauthorized',
+    };
+  }
+
+  // Only Admin can delete documents
+  if (user.role !== UserRole.ADMIN) {
+    return {
+      success: false,
+      error: 'Hanya Notaris yang dapat menghapus dokumen',
+    };
+  }
+
+  try {
+    // Get existing document
+    const existingDocument = await db.document.findUnique({
+      where: { id },
+    });
+
+    if (!existingDocument) {
+      return {
+        success: false,
+        error: 'Dokumen tidak ditemukan',
+      };
+    }
+
+    // Check if document is signed
+    if (existingDocument.status === DocumentStatus.SIGNING || existingDocument.signedAt) {
+      return {
+        success: false,
+        error: 'Dokumen yang sudah ditandatangani tidak dapat dihapus',
+      };
+    }
+
+    // Delete document (will cascade to versions)
+    await db.document.delete({
+      where: { id },
+    });
+
+    // Log audit
+    await logDelete(
+      user.id,
+      'Document',
+      existingDocument.id,
+      existingDocument,
+    );
+
+    // Revalidate path
+    revalidatePath('/dashboard/documents');
+
+    return {
+      success: true,
+      message: 'Dokumen berhasil dihapus',
     };
   } catch (error: any) {
     console.error('Error deleting document:', error);
     return {
       success: false,
-      error: error.message || 'Failed to delete document',
+      error: error.message || 'Gagal menghapus dokumen',
     };
   }
 }
