@@ -1,8 +1,7 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+// ============================================
+// NOTARYOS - SISTEM ADMINISTRASI KANTOR NOTARIS
+// Database Schema - Prisma ORM
+// ============================================
 
 generator client {
   provider = "prisma-client-js"
@@ -13,20 +12,398 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// ============================================
+// ENUMS
+// ============================================
+
+enum UserRole {
+  ADMIN           // Notaris - Full access
+  STAFF           // Staff Operasional - Limited access
+  FINANCE         // Finance - Access to financial data only
+}
+
+enum AuditAction {
+  CREATE
+  READ
+  UPDATE
+  DELETE
+  LOGIN
+  LOGOUT
+  EXPORT
+  APPROVE
+  REJECT
+}
+
+enum AuditStatus {
+  SUCCESS
+  FAILURE
+}
+
+// ============================================
+// USER & AUTHENTICATION
+// ============================================
+
 model User {
   id        String   @id @default(cuid())
   email     String   @unique
   name      String?
+  password  String   // Hashed password (bcrypt)
+  role      UserRole @default(STAFF)
+  
+  isActive  Boolean  @default(true)
+  lastLogin DateTime?
+  failedLoginAttempts Int @default(0)
+  lockedUntil DateTime?
+  
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  
+  // Relations
+  accounts       Account[]
+  sessions       Session[]
+  auditLogs      AuditLog[]
+  documents      Document[]
+  clients        Client[]
+  invoices       Invoice[]
+  
+  @@index([email])
+  @@index([role])
+  @@index([isActive])
 }
 
-model Post {
-  id        String   @id @default(cuid())
-  title     String
-  content   String?
-  published Boolean  @default(false)
-  authorId  String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// ============================================
+// AUDIT LOGGING (CRITICAL FOR COMPLIANCE)
+// ============================================
+
+model AuditLog {
+  id          String       @id @default(cuid())
+  userId      String
+  user        User         @relation(fields: [userId], references: [id])
+  
+  action      AuditAction
+  status      AuditStatus  @default(SUCCESS)
+  
+  // Target entity (what was changed)
+  entityType  String       // e.g., "Client", "Document", "Invoice"
+  entityId    String?      // ID of the entity that was changed
+  
+  // Data for tracking changes
+  oldValue    String?      // JSON string of old value
+  newValue    String?      // JSON string of new value
+  
+  // Request context
+  ipAddress   String?
+  userAgent   String?
+  
+  // Additional context
+  description String?      // Human-readable description
+  metadata    String?      // JSON string for additional context
+  
+  timestamp   DateTime     @default(now())
+  
+  @@index([userId])
+  @@index([entityType, entityId])
+  @@index([timestamp])
+  @@index([action])
+}
+
+// ============================================
+// CLIENT MANAGEMENT (CRM & KYC)
+// ============================================
+
+enum ClientType {
+  INDIVIDUAL
+  CORPORATE
+}
+
+enum ClientStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+  BLACKLISTED
+}
+
+model Client {
+  id              String       @id @default(cuid())
+  
+  // Basic info
+  clientCode      String       @unique // e.g., "CLI-2024-0001"
+  clientType      ClientType
+  status          ClientStatus @default(ACTIVE)
+  
+  // Individual fields
+  firstName       String?
+  lastName        String?
+  nik             String?      @unique // Nomor Induk Kependudukan
+  dateOfBirth     DateTime?
+  placeOfBirth    String?
+  
+  // Corporate fields
+  companyName     String?
+  npwp            String?      @unique
+  companyType     String?      // e.g., "PT", "CV", "Firma"
+  
+  // Contact info
+  email           String?
+  phone           String?
+  address         String?
+  city            String?
+  province        String?
+  postalCode      String?
+  
+  // KYC & Documents
+  kycVerified     Boolean      @default(false)
+  kycVerifiedAt   DateTime?
+  kycVerifiedBy   String?      // User ID
+  
+  // QR/Barcode for physical-digital bridge
+  qrCode          String       @unique // Generated unique QR code
+  
+  // Metadata
+  notes           String?
+  
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+  
+  // Relations
+  createdBy       User?         @relation(fields: [createdByUserId], references: [id])
+  createdByUserId String?
+  
+  documents       Document[]
+  
+  @@index([clientCode])
+  @@index([clientType])
+  @@index([status])
+  @@index([nik])
+  @@index([npwp])
+  @@index([qrCode])
+  @@index([createdByUserId])
+}
+
+// ============================================
+// DOCUMENT MANAGEMENT (AKTA)
+// ============================================
+
+enum DocumentStatus {
+  DRAFT
+  REVIEW
+  APPROVED
+  SIGNED
+  ARCHIVED
+  REJECTED
+}
+
+enum DocumentType {
+  AKTA_PENDIRIAN
+  AKTA_PERUBAHAN
+  AKTA_PEMBERIAN_HAK_TANGGUNGAN
+  AKTA_WARIS
+  SURAT_KUASA
+  PERJANJIAN
+  LAINNYA
+}
+
+model Document {
+  id              String         @id @default(cuid())
+  
+  // Basic info
+  documentNumber  String         @unique // e.g., "AKTA-2024-0001"
+  documentType    DocumentType
+  status          DocumentStatus @default(DRAFT)
+  
+  // Title & content
+  title           String
+  description     String?
+  content         String?        // Rich text content
+  
+  // QR/Barcode for physical-digital bridge
+  qrCode          String         @unique // Links to physical document
+  
+  // Dates
+  documentDate    DateTime?      // Tanggal akta dibuat
+  effectiveDate   DateTime?      // Tanggal akta berlaku
+  
+  // Participants
+  parties         String?        // JSON array of parties involved
+  
+  // Metadata
+  notes           String?
+  tags            String?        // JSON array of tags
+  
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  
+  // Relations
+  clientId        String?
+  client          Client?         @relation(fields: [clientId], references: [id])
+  
+  createdBy       User?           @relation(fields: [createdByUserId], references: [id])
+  createdByUserId String?
+  
+  reviewedBy      String?        // User ID
+  reviewedAt      DateTime?
+  
+  signedBy        String?        // User ID (Notaris)
+  signedAt        DateTime?
+  
+  versions        DocumentVersion[]
+  
+  @@index([documentNumber])
+  @@index([documentType])
+  @@index([status])
+  @@index([clientId])
+  @@index([qrCode])
+  @@index([documentDate])
+  @@index([createdByUserId])
+}
+
+// Version control for documents (Auditability)
+model DocumentVersion {
+  id          String   @id @default(cuid())
+  
+  documentId  String
+  document    Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  
+  version     Int
+  content     String
+  changeNotes String?
+  
+  createdBy   String
+  createdAt   DateTime @default(now())
+  
+  @@unique([documentId, version])
+  @@index([documentId])
+}
+
+// ============================================
+// FINANCIAL MANAGEMENT
+// ============================================
+
+enum InvoiceStatus {
+  DRAFT
+  PENDING
+  PAID
+  PARTIAL
+  OVERDUE
+  CANCELLED
+}
+
+enum PaymentMethod {
+  CASH
+  TRANSFER
+  CHEQUE
+  QRIS
+  EWALLET
+}
+
+model Invoice {
+  id              String         @id @default(cuid())
+  
+  invoiceNumber   String         @unique // e.g., "INV-2024-0001"
+  
+  // Amount
+  subtotal        Float
+  taxRate         Float          @default(11) // PPN 11%
+  taxAmount       Float
+  discount        Float          @default(0)
+  total           Float
+  
+  // Status
+  status          InvoiceStatus  @default(DRAFT)
+  paidAmount      Float          @default(0)
+  remainingAmount Float
+  
+  // Dates
+  issueDate       DateTime       @default(now())
+  dueDate         DateTime
+  paidDate        DateTime?
+  
+  // Related entities
+  clientId        String?
+  documentId      String?
+  
+  // Description
+  description     String?
+  notes           String?
+  
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  
+  // Relations
+  createdBy       User?           @relation(fields: [createdByUserId], references: [id])
+  createdByUserId String?
+  
+  payments        Payment[]
+  
+  @@index([invoiceNumber])
+  @@index([status])
+  @@index([clientId])
+  @@index([documentId])
+  @@index([dueDate])
+  @@index([createdByUserId])
+}
+
+model Payment {
+  id              String        @id @default(cuid())
+  
+  paymentNumber   String        @unique // e.g., "PAY-2024-0001"
+  
+  invoiceId       String
+  invoice         Invoice       @relation(fields: [invoiceId], references: [id])
+  
+  amount          Float
+  paymentMethod   PaymentMethod
+  
+  // Bank/transaction info
+  bankName        String?
+  accountNumber   String?
+  accountName     String?
+  transactionRef  String?
+  
+  // Attachment (proof of payment)
+  attachmentPath  String?
+  
+  notes           String?
+  
+  paidAt          DateTime      @default(now())
+  createdAt       DateTime      @default(now())
+  
+  @@index([paymentNumber])
+  @@index([invoiceId])
+  @@index([paidAt])
 }
