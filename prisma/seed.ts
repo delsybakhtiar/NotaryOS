@@ -1,7 +1,7 @@
-# ============================================
-# DATABASE SEEDING SCRIPT (PostgreSQL)
-# For testing in staging environment
-# ============================================
+// ============================================
+// DATABASE SEEDING SCRIPT (SQLite for Local Development)
+// For testing in local development environment
+// ============================================
 
 import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
@@ -60,8 +60,10 @@ async function main() {
 
   console.log('Seeding clients...');
 
-  const client1 = await prisma.client.create({
-    data: {
+  const client1 = await prisma.client.upsert({
+    where: { nik: '1234567890123456' },
+    update: {},
+    create: {
       clientCode: 'CLI-TEST-0001',
       name: 'John Doe',
       clientType: 'INDIVIDUAL',
@@ -82,8 +84,10 @@ async function main() {
     },
   });
 
-  const client2 = await prisma.client.create({
-    data: {
+  const client2 = await prisma.client.upsert({
+    where: { npwp: '123456789012345' },
+    update: {},
+    create: {
       clientCode: 'CLI-TEST-0002',
       name: 'PT Test Company',
       clientType: 'CORPORATE',
@@ -109,57 +113,73 @@ async function main() {
 
   console.log('Seeding documents...');
 
-  const doc1 = await prisma.document.create({
-    data: {
+  const doc1 = await prisma.document.upsert({
+    where: { documentNumber: 'AKTA-TEST-0001' },
+    update: {},
+    create: {
       documentNumber: 'AKTA-TEST-0001',
       title: 'Test Akta Pendirian',
       documentType: 'AKTA_PENDIRIAN',
-      description: 'Test document for staging',
+      description: 'Test document for local development',
       content: 'This is a test document content.',
       status: 'DRAFT',
       qrCode: `QR-DOC-${Date.now()}-1`,
-      clientId: client1.id,
-      createdById: adminUser.id,
+      client: { connect: { id: client1.id } },
+      createdBy: { connect: { id: adminUser.id } },
     },
   });
 
-  // Create initial version
-  await prisma.documentVersion.create({
-    data: {
-      documentId: doc1.id,
-      version: 1,
-      content: doc1.content,
-      changeNotes: 'Initial version',
-      createdBy: adminUser.id,
-    },
+  // Create initial version if not exists
+  const existingVersion1 = await prisma.documentVersion.findUnique({
+    where: { documentId_version: { documentId: doc1.id, version: 1 } },
   });
 
-  const doc2 = await prisma.document.create({
-    data: {
+  if (!existingVersion1) {
+    await prisma.documentVersion.create({
+      data: {
+        documentId: doc1.id,
+        version: 1,
+        content: doc1.content || '',
+        changeNotes: 'Initial version',
+        createdBy: adminUser.id,
+      },
+    });
+  }
+
+  const doc2 = await prisma.document.upsert({
+    where: { documentNumber: 'AKTA-TEST-0002' },
+    update: {},
+    create: {
       documentNumber: 'AKTA-TEST-0002',
       title: 'Test Akta Perubahan',
       documentType: 'AKTA_PERUBAHAN',
-      description: 'Test document 2 for staging',
+      description: 'Test document 2 for local development',
       content: 'This is another test document content.',
       status: 'REVIEW',
       qrCode: `QR-DOC-${Date.now()}-2`,
-      clientId: client2.id,
-      createdById: staffUser.id,
+      client: { connect: { id: client2.id } },
+      createdBy: { connect: { id: staffUser.id } },
       reviewedBy: adminUser.id,
       reviewedAt: new Date(),
     },
   });
 
-  // Create initial version
-  await prisma.documentVersion.create({
-    data: {
-      documentId: doc2.id,
-      version: 1,
-      content: doc2.content,
-      changeNotes: 'Initial version',
-      createdBy: staffUser.id,
-    },
+  // Create initial version if not exists
+  const existingVersion2 = await prisma.documentVersion.findUnique({
+    where: { documentId_version: { documentId: doc2.id, version: 1 } },
   });
+
+  if (!existingVersion2) {
+    await prisma.documentVersion.create({
+      data: {
+        documentId: doc2.id,
+        version: 1,
+        content: doc2.content || '',
+        changeNotes: 'Initial version',
+        createdBy: staffUser.id,
+      },
+    });
+  }
 
   console.log('✓ Documents seeded');
 
@@ -169,43 +189,55 @@ async function main() {
 
   console.log('Seeding audit logs...');
 
-  await prisma.auditLog.create({
-    data: {
-      userId: adminUser.id,
-      action: 'CREATE',
-      entityType: 'Client',
-      entityId: client1.id,
-      description: 'Created test client',
-      oldValue: null,
-      newValue: JSON.stringify({ name: client1.name }),
-    },
-  });
+  // Count existing audit logs to avoid duplicates
+  const existingAuditLogs = await prisma.auditLog.count();
 
-  await prisma.auditLog.create({
-    data: {
-      userId: staffUser.id,
-      action: 'CREATE',
-      entityType: 'Document',
-      entityId: doc1.id,
-      description: 'Created test document',
-      oldValue: null,
-      newValue: JSON.stringify({ title: doc1.title }),
-    },
-  });
+  if (existingAuditLogs === 0) {
+    await prisma.auditLog.create({
+      data: {
+        userId: adminUser.id,
+        action: 'CREATE',
+        entityType: 'Client',
+        entityId: client1.id,
+        description: 'Created test client',
+        oldValue: null,
+        newValue: JSON.stringify({ name: client1.name }),
+      },
+    });
 
-  console.log('✓ Audit logs seeded');
+    await prisma.auditLog.create({
+      data: {
+        userId: staffUser.id,
+        action: 'CREATE',
+        entityType: 'Document',
+        entityId: doc1.id,
+        description: 'Created test document',
+        oldValue: null,
+        newValue: JSON.stringify({ title: doc1.title }),
+      },
+    });
+
+    console.log('✓ Audit logs seeded');
+  } else {
+    console.log('✓ Audit logs already exist, skipping');
+  }
 
   // ============================================
   // SUMMARY
   // ============================================
 
+  const userCount = await prisma.user.count();
+  const clientCount = await prisma.client.count();
+  const documentCount = await prisma.document.count();
+  const auditLogCount = await prisma.auditLog.count();
+
   console.log('==========================================');
   console.log('🎉 Database seeding complete!');
   console.log('==========================================');
-  console.log(`Users: 3`);
-  console.log(`Clients: 2`);
-  console.log(`Documents: 2`);
-  console.log(`Audit Logs: 2`);
+  console.log(`Users: ${userCount}`);
+  console.log(`Clients: ${clientCount}`);
+  console.log(`Documents: ${documentCount}`);
+  console.log(`Audit Logs: ${auditLogCount}`);
   console.log('==========================================');
 
   console.log('\nTest Credentials:');
