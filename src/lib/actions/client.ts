@@ -471,6 +471,7 @@ export async function verifyKyc(clientId: string, kycStatus: 'VERIFIED' | 'REJEC
     // Revalidate path
     revalidatePath('/dashboard/clients');
     revalidatePath(`/dashboard/clients/${clientId}`);
+    revalidatePath(`/dashboard/clients/${clientId}/kyc`);
 
     return {
       success: true,

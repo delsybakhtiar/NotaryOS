@@ -16,7 +16,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Users, Plus, Search, MoreHorizontal, Eye, Edit, Trash2, ShieldCheck, ShieldX } from 'lucide-react';
+import { Users, Plus, Search, MoreHorizontal, Eye, Edit, Trash2, ShieldCheck, CheckCircle2 } from 'lucide-react';
 import Link from 'next/link';
 import {
   DropdownMenu,
@@ -308,6 +308,17 @@ async function ClientsPage({
                                 Edit
                               </Link>
                             </DropdownMenuItem>
+                            {session.user.role === 'ADMIN' && (
+                              <>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem asChild>
+                                  <Link href={`/dashboard/clients/${client.id}/kyc`}>
+                                    <ShieldCheck className="mr-2 h-4 w-4" />
+                                    Review & Verifikasi KYC
+                                  </Link>
+                                </DropdownMenuItem>
+                              </>
+                            )}
                             {session.user.role === 'ADMIN' && client.kycStatus === 'PENDING' && (
                               <>
                                 <DropdownMenuSeparator />
@@ -316,33 +327,8 @@ async function ClientsPage({
                                     <input type="hidden" name="clientId" value={client.id} />
                                     <input type="hidden" name="action" value="verify" />
                                     <button type="submit" className="flex items-center w-full">
-                                      <ShieldCheck className="mr-2 h-4 w-4 text-green-600" />
-                                      <span className="text-green-600">Setujui KYC</span>
-                                    </button>
-                                  </form>
-                                </DropdownMenuItem>
-                                <DropdownMenuItem asChild>
-                                  <form action="/api/clients/kyc/verify" method="POST">
-                                    <input type="hidden" name="clientId" value={client.id} />
-                                    <input type="hidden" name="action" value="reject" />
-                                    <button type="submit" className="flex items-center w-full">
-                                      <ShieldX className="mr-2 h-4 w-4 text-red-600" />
-                                      <span className="text-red-600">Tolak KYC</span>
-                                    </button>
-                                  </form>
-                                </DropdownMenuItem>
-                              </>
-                            )}
-                            {session.user.role === 'ADMIN' && client.kycStatus === 'VERIFIED' && (
-                              <>
-                                <DropdownMenuSeparator />
-                                <DropdownMenuItem asChild>
-                                  <form action="/api/clients/kyc/verify" method="POST">
-                                    <input type="hidden" name="clientId" value={client.id} />
-                                    <input type="hidden" name="action" value="reject" />
-                                    <button type="submit" className="flex items-center w-full">
-                                      <ShieldX className="mr-2 h-4 w-4 text-red-600" />
-                                      <span className="text-red-600">Batalkan KYC</span>
+                                      <CheckCircle2 className="mr-2 h-4 w-4 text-green-600" />
+                                      <span className="text-green-600">Quick Approve</span>
                                     </button>
                                   </form>
                                 </DropdownMenuItem>

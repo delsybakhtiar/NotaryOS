@@ -16,13 +16,18 @@ import { format } from 'date-fns';
 import { id as idLocale } from 'date-fns/locale';
 import { KycUploadArea } from '@/components/clients/kyc-upload-area';
 import { DeleteClientDialog } from '@/components/clients/delete-client-dialog';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
 
 export default async function ClientDetailPage({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
-  const result = await getClientById(params.id);
+  const session = await getServerSession(authOptions);
+
+  const { id } = await params;
+  const result = await getClientById(id);
 
   if (!result.success || !result.client) {
     redirect('/dashboard/clients');
@@ -78,6 +83,14 @@ export default async function ClientDetailPage({
           </p>
         </div>
         <div className="flex gap-2">
+          {session?.user?.role === 'ADMIN' && (
+            <Link href={`/dashboard/clients/${client.id}/kyc`}>
+              <Button variant="outline">
+                <ShieldCheck className="mr-2 h-4 w-4" />
+                Review KYC
+              </Button>
+            </Link>
+          )}
           <Link href={`/dashboard/clients/${client.id}/edit`}>
             <Button variant="outline">
               <Edit className="mr-2 h-4 w-4" />
