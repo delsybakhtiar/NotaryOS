@@ -38,6 +38,12 @@ export default function DashboardHomePage() {
     return null;
   }
 
+  // Debug: Log session to check role
+  console.log('Session:', session);
+  console.log('User Role:', session.user?.role);
+
+  const userRole = session.user?.role || 'STAFF';
+
   const getRoleBadgeColor = (role: string) => {
     switch (role) {
       case 'ADMIN':
@@ -64,6 +70,11 @@ export default function DashboardHomePage() {
     }
   };
 
+  // Check access permissions
+  const canAccessClients = userRole === 'ADMIN' || userRole === 'STAFF';
+  const canAccessDocuments = userRole === 'ADMIN' || userRole === 'STAFF';
+  const canAccessFinance = userRole === 'ADMIN' || userRole === 'FINANCE';
+
   return (
     <div className="space-y-6">
       {/* Welcome Section */}
@@ -73,8 +84,8 @@ export default function DashboardHomePage() {
           <p className="text-muted-foreground mt-1">Ringkasan aktivitas sistem NotaryOS</p>
         </div>
         <div className="text-right">
-          <span className={`px-3 py-1 rounded-full text-xs font-medium ${getRoleBadgeColor(session.user.role)}`}>
-            {getRoleLabel(session.user.role)}
+          <span className={`px-3 py-1 rounded-full text-xs font-medium ${getRoleBadgeColor(userRole)}`}>
+            {getRoleLabel(userRole)}
           </span>
         </div>
       </div>
@@ -87,7 +98,7 @@ export default function DashboardHomePage() {
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">0</div>
+            <div className="text-2xl font-bold">2</div>
             <p className="text-xs text-muted-foreground mt-1">Klien terdaftar</p>
           </CardContent>
         </Card>
@@ -98,7 +109,7 @@ export default function DashboardHomePage() {
             <FileText className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">0</div>
+            <div className="text-2xl font-bold">2</div>
             <p className="text-xs text-muted-foreground mt-1">Dokumen akta</p>
           </CardContent>
         </Card>
@@ -120,55 +131,118 @@ export default function DashboardHomePage() {
             <Activity className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">0</div>
+            <div className="text-2xl font-bold">4</div>
             <p className="text-xs text-muted-foreground mt-1">Aksi log tercatat</p>
           </CardContent>
         </Card>
       </div>
 
       {/* Quick Actions */}
-      <div className="grid gap-6 md:grid-cols-3">
-        {(session.user.role === 'ADMIN' || session.user.role === 'STAFF') && (
-          <>
+      <div>
+        <h2 className="text-xl font-semibold mb-4">Aksi Cepat</h2>
+        <div className="grid gap-6 md:grid-cols-3">
+          {canAccessClients ? (
             <Link href="/dashboard/clients">
-              <Card className="hover:shadow-lg transition-shadow cursor-pointer h-full">
+              <Card className="hover:shadow-lg transition-all cursor-pointer h-full group hover:border-primary/50">
                 <CardHeader>
-                  <Users className="h-8 w-8 text-primary mb-2" />
-                  <CardTitle>Manajemen Klien</CardTitle>
+                  <Users className="h-8 w-8 text-primary mb-2 group-hover:scale-110 transition-transform" />
+                  <CardTitle className="group-hover:text-primary transition-colors">Manajemen Klien</CardTitle>
                   <CardDescription>
                     Kelola data klien & verifikasi KYC
                   </CardDescription>
                 </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-muted-foreground">
+                    Akses data klien, buat klien baru, dan verifikasi KYC
+                  </p>
+                </CardContent>
               </Card>
             </Link>
+          ) : (
+            <Card className="h-full opacity-50">
+              <CardHeader>
+                <Users className="h-8 w-8 text-muted-foreground mb-2" />
+                <CardTitle>Manajemen Klien</CardTitle>
+                <CardDescription>
+                  Kelola data klien & verifikasi KYC
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground">
+                  Anda tidak memiliki akses ke fitur ini
+                </p>
+              </CardContent>
+            </Card>
+          )}
 
+          {canAccessDocuments ? (
             <Link href="/dashboard/documents">
-              <Card className="hover:shadow-lg transition-shadow cursor-pointer h-full">
+              <Card className="hover:shadow-lg transition-all cursor-pointer h-full group hover:border-primary/50">
                 <CardHeader>
-                  <FileText className="h-8 w-8 text-primary mb-2" />
-                  <CardTitle>Dokumen Akta</CardTitle>
+                  <FileText className="h-8 w-8 text-primary mb-2 group-hover:scale-110 transition-transform" />
+                  <CardTitle className="group-hover:text-primary transition-colors">Dokumen Akta</CardTitle>
                   <CardDescription>
                     Buat & kelola dokumen akta
                   </CardDescription>
                 </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-muted-foreground">
+                    Buat akta baru, edit, dan tracking status dokumen
+                  </p>
+                </CardContent>
               </Card>
             </Link>
-          </>
-        )}
-
-        {(session.user.role === 'ADMIN' || session.user.role === 'FINANCE') && (
-          <Link href="/dashboard/finance">
-            <Card className="hover:shadow-lg transition-shadow cursor-pointer h-full">
+          ) : (
+            <Card className="h-full opacity-50">
               <CardHeader>
-                <DollarSign className="h-8 w-8 text-primary mb-2" />
+                <FileText className="h-8 w-8 text-muted-foreground mb-2" />
+                <CardTitle>Dokumen Akta</CardTitle>
+                <CardDescription>
+                  Buat & kelola dokumen akta
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground">
+                  Anda tidak memiliki akses ke fitur ini
+                </p>
+              </CardContent>
+            </Card>
+          )}
+
+          {canAccessFinance ? (
+            <Link href="/dashboard/finance">
+              <Card className="hover:shadow-lg transition-all cursor-pointer h-full group hover:border-primary/50">
+                <CardHeader>
+                  <DollarSign className="h-8 w-8 text-primary mb-2 group-hover:scale-110 transition-transform" />
+                  <CardTitle className="group-hover:text-primary transition-colors">Keuangan</CardTitle>
+                  <CardDescription>
+                    Invoice & pembayaran
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-muted-foreground">
+                    Kelola invoice, tracking pembayaran, dan laporan keuangan
+                  </p>
+                </CardContent>
+              </Card>
+            </Link>
+          ) : (
+            <Card className="h-full opacity-50">
+              <CardHeader>
+                <DollarSign className="h-8 w-8 text-muted-foreground mb-2" />
                 <CardTitle>Keuangan</CardTitle>
                 <CardDescription>
                   Invoice & pembayaran
                 </CardDescription>
               </CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground">
+                  Anda tidak memiliki akses ke fitur ini
+                </p>
+              </CardContent>
             </Card>
-          </Link>
-        )}
+          )}
+        </div>
       </div>
 
       {/* System Info */}
@@ -184,7 +258,11 @@ export default function DashboardHomePage() {
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">Role</span>
-              <span className="font-medium">{getRoleLabel(session.user.role)}</span>
+              <span className="font-medium">{getRoleLabel(userRole)}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Email</span>
+              <span className="font-medium">{session.user.email}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">Keamanan</span>
