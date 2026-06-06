@@ -1,195 +1,94 @@
-'use client';
-
-// ============================================
-// LANDING PAGE
-// Entry point for NotaryOS
-// ============================================
-
-import { useRouter } from 'next/navigation';
-import { useEffect } from 'react';
-import { useSession } from 'next-auth/react';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { ShieldCheck, Users, FileText, DollarSign, ArrowRight, CheckCircle2, Lock } from 'lucide-react';
-
 export default function HomePage() {
-  const { data: session, status } = useSession();
-  const router = useRouter();
-
-  useEffect(() => {
-    // If user is authenticated, redirect to dashboard
-    if (status === 'authenticated' && session) {
-      router.push('/dashboard');
-    }
-  }, [status, session, router]);
-
-  if (status === 'loading') {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto" />
-          <p className="mt-4 text-muted-foreground">Memuat...</p>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="min-h-screen flex flex-col bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
-      {/* Header */}
-      <header className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
-              <ShieldCheck className="h-6 w-6 text-primary" />
-            </div>
-            <div>
-              <h1 className="text-xl font-bold">NotaryOS</h1>
-              <p className="text-xs text-muted-foreground">Sistem Administrasi Kantor Notaris</p>
-            </div>
-          </div>
-          <Button onClick={() => router.push('/login')}>
-            Masuk
-          </Button>
-        </div>
-      </header>
-
-      {/* Hero Section */}
-      <main className="container mx-auto px-4 py-16">
-        <div className="max-w-4xl mx-auto text-center mb-16">
-          <h2 className="text-5xl font-bold mb-6 bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
-            Sistem Administrasi Kantor Notaris Modern
-          </h2>
-          <p className="text-xl text-muted-foreground mb-8">
-            Kelola klien, dokumen akta, dan keuangan kantor notaris dengan aman dan efisien.
-            Sesuai standar UU PDP untuk perlindungan data pribadi.
-          </p>
-          <div className="flex gap-4 justify-center">
-            <Button size="lg" onClick={() => router.push('/login')} className="gap-2">
-              Mulai Sekarang
-              <ArrowRight className="h-5 w-5" />
-            </Button>
-            <Button size="lg" variant="outline" onClick={() => window.open('#features', '_self')}>
-              Pelajari Lebih Lanjut
-            </Button>
-          </div>
-        </div>
-
-        {/* Features Grid */}
-        <div className="max-w-6xl mx-auto mb-16">
-          <div className="grid gap-6 md:grid-cols-3 mb-8">
-            <Card>
-              <CardHeader>
-                <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
-                  <Users className="h-6 w-6 text-primary" />
-                </div>
-                <CardTitle>Manajemen Klien</CardTitle>
-                <CardDescription>
-                  Kelola data klien individual dan korporat dengan lengkap, termasuk KYC dan verifikasi identitas.
-                </CardDescription>
-              </CardHeader>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
-                  <FileText className="h-6 w-6 text-primary" />
-                </div>
-                <CardTitle>Dokumen Akta</CardTitle>
-                <CardDescription>
-                  Buat, kelola, dan lacak dokumen akta dengan kontrol versi dan workflow approval.
-                </CardDescription>
-              </CardHeader>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
-                  <DollarSign className="h-6 w-6 text-primary" />
-                </div>
-                <CardTitle>Manajemen Keuangan</CardTitle>
-                <CardDescription>
-                  Kelola invoice, pembayaran, dan laporan keuangan dengan mudah dan akurat.
-                </CardDescription>
-              </CardHeader>
-            </Card>
-          </div>
-        </div>
-
-        {/* Security Features */}
-        <div className="max-w-4xl mx-auto mb-16" id="features">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Lock className="h-6 w-6 text-primary" />
-                Keamanan & Kepatuhan
-              </CardTitle>
-              <CardDescription>
-                Dilindungi dengan standar keamanan berlapis sesuai UU PDP
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div className="flex items-start gap-3">
-                  <CheckCircle2 className="h-5 w-5 text-green-600 mt-0.5 flex-shrink-0" />
-                  <div>
-                    <h4 className="font-medium">Enkripsi End-to-End</h4>
-                    <p className="text-sm text-muted-foreground">Semua data dienkripsi dengan standar industri</p>
-                  </div>
-                </div>
-                <div className="flex items-start gap-3">
-                  <CheckCircle2 className="h-5 w-5 text-green-600 mt-0.5 flex-shrink-0" />
-                  <div>
-                    <h4 className="font-medium">Audit Log Lengkap</h4>
-                    <p className="text-sm text-muted-foreground">Setiap aksi tercatat untuk kepatuhan dan transparansi</p>
-                  </div>
-                </div>
-                <div className="flex items-start gap-3">
-                  <CheckCircle2 className="h-5 w-5 text-green-600 mt-0.5 flex-shrink-0" />
-                  <div>
-                    <h4 className="font-medium">Role-Based Access Control</h4>
-                    <p className="text-sm text-muted-foreground">Akses terbatas berdasarkan peran dan izin pengguna</p>
-                  </div>
-                </div>
-                <div className="flex items-start gap-3">
-                  <CheckCircle2 className="h-5 w-5 text-green-600 mt-0.5 flex-shrink-0" />
-                  <div>
-                    <h4 className="font-medium">Sesuai UU PDP</h4>
-                    <p className="text-sm text-muted-foreground">Mematuhi Undang-Undang Perlindungan Data Pribadi</p>
-                  </div>
-                </div>
+    <html lang="id">
+      <head>
+        <title>NotaryOS | Vura Design</title>
+      </head>
+      <body className="bg-white dark:bg-slate-900">
+        <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 p-4">
+          <div className="text-center space-y-6 max-w-4xl">
+            {/* Logo */}
+            <div className="flex items-center justify-center gap-3 mb-8">
+              <div className="h-16 w-16 rounded-xl bg-primary/10 flex items-center justify-center">
+                <svg className="h-10 w-10 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                </svg>
               </div>
-            </CardContent>
-          </Card>
-        </div>
+              <div className="text-left">
+                <h1 className="text-3xl font-bold text-slate-900 dark:text-white">NotaryOS</h1>
+                <p className="text-sm text-slate-600 dark:text-slate-400">Crafted by Vura Design</p>
+              </div>
+            </div>
 
-        {/* CTA Section */}
-        <div className="max-w-2xl mx-auto text-center">
-          <Card className="bg-primary/5 border-primary/20">
-            <CardHeader>
-              <CardTitle>Siap Memulai?</CardTitle>
-              <CardDescription>
-                Masuk ke akun Anda untuk mulai menggunakan NotaryOS
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Button size="lg" onClick={() => router.push('/login')} className="gap-2 w-full md:w-auto">
+            {/* Hero Section */}
+            <div className="space-y-4 mb-12">
+              <h2 className="text-4xl md:text-5xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-primary to-primary/60">
+                Sistem Administrasi Kantor Notaris Modern
+              </h2>
+              <p className="text-xl text-slate-600 dark:text-slate-400 max-w-2xl mx-auto">
+                Kelola klien, dokumen akta, dan keuangan kantor notaris dengan aman dan efisien.
+                Sesuai standar UU PDP untuk perlindungan data pribadi.
+              </p>
+            </div>
+
+            {/* Features */}
+            <div className="grid gap-6 md:grid-cols-3 mb-12 text-left">
+              <div className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg border border-slate-200 dark:border-slate-700">
+                <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
+                  <svg className="h-6 w-6 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                  </svg>
+                </div>
+                <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">Manajemen Klien</h3>
+                <p className="text-sm text-slate-600 dark:text-slate-400">
+                  Kelola data klien individual dan korporat dengan lengkap.
+                </p>
+              </div>
+
+              <div className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg border border-slate-200 dark:border-slate-700">
+                <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
+                  <svg className="h-6 w-6 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                </div>
+                <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">Dokumen Akta</h3>
+                <p className="text-sm text-slate-600 dark:text-slate-400">
+                  Buat, kelola, dan lacak dokumen akta dengan kontrol versi.
+                </p>
+              </div>
+
+              <div className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg border border-slate-200 dark:border-slate-700">
+                <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
+                  <svg className="h-6 w-6 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+                <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">Manajemen Keuangan</h3>
+                <p className="text-sm text-slate-600 dark:text-slate-400">
+                  Kelola invoice, pembayaran, dan laporan keuangan.
+                </p>
+              </div>
+            </div>
+
+            {/* CTA Buttons */}
+            <div className="flex gap-4 justify-center">
+              <a
+                href="/login"
+                className="px-8 py-3 bg-primary text-primary-foreground rounded-lg font-medium hover:bg-primary/90 transition-colors"
+              >
                 Masuk ke Sistem
-                <ArrowRight className="h-5 w-5" />
-              </Button>
-            </CardContent>
-          </Card>
-        </div>
-      </main>
+              </a>
+            </div>
 
-      {/* Footer */}
-      <footer className="border-t mt-auto">
-        <div className="container mx-auto px-4 py-6">
-          <p className="text-center text-sm text-muted-foreground">
-            © 2026 Vura Design. All rights reserved.
-          </p>
+            {/* Footer */}
+            <div className="border-t border-slate-200 dark:border-slate-700 pt-6 mt-12">
+              <p className="text-sm text-slate-600 dark:text-slate-400 text-center">
+                © 2026 Vura Design. All rights reserved.
+              </p>
+            </div>
+          </div>
         </div>
-      </footer>
-    </div>
+      </body>
+    </html>
   );
 }
