@@ -182,7 +182,7 @@ export function NewDocumentForm({ clients }: NewDocumentFormProps) {
                   </SelectTrigger>
                   <SelectContent>
                     {clients.length === 0 ? (
-                      <SelectItem value="" disabled>
+                      <SelectItem value="no-clients" disabled>
                         Tidak ada klien tersedia
                       </SelectItem>
                     ) : (

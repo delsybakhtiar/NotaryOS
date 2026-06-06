@@ -240,3 +240,23 @@ Stage Summary:
 - Dev server running without errors
 
 ---
+
+---
+Task ID: pdp-fix
+Agent: Z.ai Code
+Task: Fix Select.Item empty value errors across all components
+
+Work Log:
+- Fixed src/app/dashboard/documents/new/page.tsx line 145: Changed value="" to value="none"
+- Fixed src/components/documents/document-detail.tsx line 381: Changed value="" to value="none"
+- Fixed src/components/documents/new-document-form.tsx line 185: Changed value="" to value="no-clients"
+- Updated formData initialization in document-detail.tsx to use 'none' for no client
+- Updated handleSave in document-detail.tsx to skip clientId when value is 'none'
+- Updated form submission in documents/new/page.tsx to skip clientId when value is 'none'
+
+Stage Summary:
+- All Select.Item components with empty string values fixed
+- Proper handling of "none" value in forms and API calls
+- No more runtime errors related to Select.Item empty values
+
+---

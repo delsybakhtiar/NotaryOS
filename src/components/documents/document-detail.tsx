@@ -114,7 +114,7 @@ export function DocumentDetail({ document, userRole, availableClients }: Documen
     documentType: document.documentType,
     description: document.description || '',
     content: document.content || '',
-    clientId: document.client?.id || '',
+    clientId: document.client?.id || 'none',
     documentDate: document.documentDate ? document.documentDate.toISOString().split('T')[0] : '',
     effectiveDate: document.effectiveDate ? document.effectiveDate.toISOString().split('T')[0] : '',
     notes: document.notes || '',
@@ -147,7 +147,7 @@ export function DocumentDetail({ document, userRole, availableClients }: Documen
         documentType: formData.documentType as DocumentType,
         description: formData.description || undefined,
         content: formData.content,
-        clientId: formData.clientId || undefined,
+        clientId: formData.clientId && formData.clientId !== 'none' ? formData.clientId : undefined,
         documentDate: formData.documentDate ? new Date(formData.documentDate) : undefined,
         effectiveDate: formData.effectiveDate ? new Date(formData.effectiveDate) : undefined,
         notes: formData.notes || undefined,
@@ -378,7 +378,7 @@ export function DocumentDetail({ document, userRole, availableClients }: Documen
                       <SelectValue placeholder="Pilih klien" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Tanpa Klien</SelectItem>
+                      <SelectItem value="none">Tanpa Klien</SelectItem>
                       {availableClients.map((client) => (
                         <SelectItem key={client.id} value={client.id}>
                           {client.name} ({client.clientCode})
