@@ -48,7 +48,7 @@ export default function NewDocumentPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
-    clientId: '',
+    clientId: 'none',
     title: '',
     documentType: '',
     description: '',
@@ -77,6 +77,11 @@ export default function NewDocumentPage() {
       setLoading(true);
       const formDataObj = new FormData();
       Object.entries(formData).forEach(([key, value]) => {
+        // Skip clientId if it's "none" (tanpa klien)
+        if (key === 'clientId' && value === 'none') {
+          return;
+        }
+        // Only append non-empty values
         if (value) formDataObj.append(key, value);
       });
 
@@ -142,7 +147,7 @@ export default function NewDocumentPage() {
                   <SelectValue placeholder="Pilih klien (opsional)" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Tanpa Klien</SelectItem>
+                  <SelectItem value="none">Tanpa Klien</SelectItem>
                   {/* TODO: Fetch clients from API */}
                 </SelectContent>
               </Select>
