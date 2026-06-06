@@ -58,10 +58,10 @@ export default async function DashboardLayout({
         </main>
 
         {/* Footer */}
-        <footer className="border-t bg-background">
+        <footer className="border-t bg-background mt-auto">
           <div className="px-6 py-4">
             <p className="text-center text-sm text-muted-foreground">
-              © 2024 NotaryOS. Sistem Administrasi Kantor Notaris dengan keamanan data berlapis.
+              © 2026 Vura Design. All rights reserved.
             </p>
           </div>
         </footer>
