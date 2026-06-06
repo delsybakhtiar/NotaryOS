@@ -468,6 +468,27 @@ export async function verifyKyc(clientId: string, kycStatus: 'VERIFIED' | 'REJEC
       },
     );
 
+    // Create notification for staff who created this client
+    if (existingClient.createdByUserId && existingClient.createdByUserId !== user.id) {
+      await db.notification.create({
+        data: {
+          userId: existingClient.createdByUserId,
+          type: 'KYC_STATUS_CHANGE',
+          title: kycStatus === 'VERIFIED' ? 'KYC Disetujui' : 'KYC Ditolak',
+          message: `Klien ${existingClient.name} (${existingClient.clientCode}) ${kycStatus === 'VERIFIED' ? 'telah disetujui' : 'ditolak'} oleh ${user.name}${kycStatus === 'REJECTED' && notes ? `. Catatan: ${notes}` : ''}`,
+          actionUrl: `/dashboard/clients/${existingClient.id}`,
+          metadata: JSON.stringify({
+            clientId: existingClient.id,
+            clientName: existingClient.name,
+            clientCode: existingClient.clientCode,
+            oldStatus: existingClient.kycStatus,
+            newStatus: kycStatus,
+            rejectionNotes: kycStatus === 'REJECTED' ? notes : null,
+          }),
+        },
+      });
+    }
+
     // Revalidate path
     revalidatePath('/dashboard/clients');
     revalidatePath(`/dashboard/clients/${clientId}`);

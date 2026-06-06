@@ -65,6 +65,7 @@ model User {
   documents      Document[]
   clients        Client[]
   invoices       Invoice[]
+  notifications  Notification[]
   
   @@index([email])
   @@index([role])
@@ -416,4 +417,53 @@ model Payment {
   @@index([paymentNumber])
   @@index([invoiceId])
   @@index([paidAt])
+}
+
+// ============================================
+// NOTIFICATION SYSTEM
+// ============================================
+
+enum NotificationType {
+  KYC_STATUS_CHANGE
+  CLIENT_CREATED
+  CLIENT_UPDATED
+  CLIENT_DELETED
+  DOCUMENT_CREATED
+  DOCUMENT_UPDATED
+  DOCUMENT_APPROVED
+  DOCUMENT_REJECTED
+  INVOICE_CREATED
+  PAYMENT_RECEIVED
+  SYSTEM_ALERT
+}
+
+enum NotificationStatus {
+  UNREAD
+  READ
+  ARCHIVED
+}
+
+model Notification {
+  id          String             @id @default(cuid())
+  
+  userId      String             // User who receives the notification
+  user        User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  type        NotificationType
+  status      NotificationStatus @default(UNREAD)
+  
+  title       String             // Short title (e.g., "KYC Disetujui")
+  message     String             // Full message
+  
+  metadata    String?            // JSON string for additional data
+  actionUrl   String?            // URL to navigate when clicked
+  
+  readAt      DateTime?
+  
+  createdAt   DateTime           @default(now())
+  
+  @@index([userId])
+  @@index([type])
+  @@index([status])
+  @@index([createdAt])
 }

@@ -312,7 +312,7 @@ async function ClientsPage({
                               <>
                                 <DropdownMenuSeparator />
                                 <DropdownMenuItem asChild>
-                                  <Link href={`/dashboard/clients/${client.id}/kyc`}>
+                                  <Link href={`/dashboard/clients/${client.id}/kyc-review`}>
                                     <ShieldCheck className="mr-2 h-4 w-4" />
                                     Review & Verifikasi KYC
                                   </Link>
