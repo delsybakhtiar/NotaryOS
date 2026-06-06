@@ -167,26 +167,26 @@ enum KycStatus {
 
 model Client {
   id              String       @id @default(cuid())
-  
+
   // Basic info
   clientCode      String       @unique // e.g., "CLI-2024-0001"
   clientType      ClientType
   status          ClientStatus @default(ACTIVE)
-  
+
   // Name (unified for individual and corporate)
   name            String       // Full name for individual, company name for corporate
-  
+
   // Individual fields
   firstName       String?
   lastName        String?
   nik             String?      @unique // Nomor Induk Kependudukan
   dateOfBirth     DateTime?
   placeOfBirth    String?
-  
+
   // Corporate fields
   npwp            String?      @unique
   companyType     String?      // e.g., "PT", "CV", "Firma"
-  
+
   // Contact info
   email           String?
   phone           String?
@@ -194,7 +194,7 @@ model Client {
   city            String?
   province        String?
   postalCode      String?
-  
+
   // KYC & Documents
   kycStatus       KycStatus    @default(PENDING)
   kycVerifiedAt   DateTime?
@@ -202,22 +202,29 @@ model Client {
   kycRejectNotes  String?      // Notes for rejection reason
   ktpUrl          String?      // KTP document path (for individual)
   npwpUrl         String?      // NPWP document path (for individual/corporate)
-  
+
   // QR/Barcode for physical-digital bridge
   qrCode          String       @unique // Generated unique QR code
-  
+
+  // UU PDP Compliance
+  dataConsentGiven Boolean  @default(false)  // Persetujuan pengolahan data (Pasal 7)
+  dataConsentGivenAt DateTime?  // Waktu persetujuan diberikan
+  dataConsentExpiresAt DateTime?  // Waktu persetujuan berakhir
+  canContactForMarketing Boolean @default(false)  // Persetujuan untuk marketing
+
   // Metadata
   notes           String?
-  
+
   createdAt       DateTime     @default(now())
   updatedAt       DateTime     @updatedAt
-  
+
   // Relations
   createdBy       User?         @relation(fields: [createdByUserId], references: [id])
   createdByUserId String?
-  
+
   documents       Document[]
-  
+  dataSubjectRequests  DataSubjectRequest[]  // Permintaan dari subjek data (Pasal 26)
+
   @@index([clientCode])
   @@index([clientType])
   @@index([status])
@@ -226,6 +233,7 @@ model Client {
   @@index([npwp])
   @@index([qrCode])
   @@index([createdByUserId])
+  @@index([dataConsentGiven])
 }
 
 // ============================================
@@ -494,6 +502,13 @@ model NotarisSettings {
   documentPrefix String @default("AKTA") // Prefix nomor dokumen
   invoicePrefix  String @default("INV")  // Prefix nomor invoice
 
+  // UU PDP Compliance Settings
+  privacyPolicy   String?   // Kebijakan privasi kantor notaris
+  dataRetentionYears Int @default(10)  // Retensi data klien dalam tahun (sesuai aturan notaris)
+  auditLogRetentionMonths Int @default(6)  // Retensi audit log minimum 6 bulan (Pasal 31 UU PDP)
+  dpoEmail       String?   // Email Data Protection Officer
+  dpoName        String?   // Nama Data Protection Officer
+
   // Metadata
   logoUrl    String?  // URL logo kantor
   notes      String?
@@ -503,4 +518,113 @@ model NotarisSettings {
 
   @@index([city])
   @@index([province])
+}
+
+// ============================================
+// DATA SUBJECT REQUESTS (UU PDP - Pasal 26)
+// ============================================
+
+enum DataSubjectRequestType {
+  ACCESS      // Hak untuk mendapatkan akses atas Data Pribadi
+  CORRECTION  // Hak untuk meminta koreksi Data Pribadi
+  DELETION    // Hak untuk meminta penghapusan Data Pribadi
+  RESTRICTION // Hak untuk meminta pembatasan pemrosesan
+  OBJECTION  // Hak untuk menolak pemrosesan
+  PORTABILITY // Hak untuk meminta pemindahan Data Pribadi
+}
+
+enum DataSubjectRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  COMPLETED
+}
+
+model DataSubjectRequest {
+  id          String                    @id @default(cuid())
+
+  client      Client                    @relation(fields: [clientId], references: [id])
+  clientId    String
+
+  requestType DataSubjectRequestType
+  status      DataSubjectRequestStatus  @default(PENDING)
+
+  reason      String?                   // Alasan permintaan
+  description String?                   // Deskripsi detail permintaan
+
+  processedBy String?                   // User ID yang memproses
+  processedAt DateTime?                 // Waktu diproses
+  rejectionReason String?               // Alasan penolakan
+
+  metadata    String?                   // JSON string untuk data tambahan
+
+  createdAt   DateTime                  @default(now())
+  updatedAt   DateTime                  @updatedAt
+
+  @@index([clientId])
+  @@index([requestType])
+  @@index([status])
+  @@index([createdAt])
+}
+
+// ============================================
+// DATA BREACH NOTIFICATION (UU PDP - Pasal 34)
+// ============================================
+
+enum DataBreachSeverity {
+  LOW       // Dampak minimal
+  MEDIUM    // Dampak sedang
+  HIGH      // Dampak tinggi
+  CRITICAL  // Dampak kritis
+}
+
+enum DataBreachStatus {
+  DETECTED      // Terdeteksi
+  INVESTIGATING // Sedang diselidiki
+  CONTAINED     // Telah dikendalikan
+  RESOLVED      // Telah diselesaikan
+  NOTIFIED      // Telah diberitahu
+}
+
+model DataBreach {
+  id          String             @id @default(cuid())
+
+  title       String             // Judul insiden
+  description String             // Deskripsi detail
+
+  severity    DataBreachSeverity
+  status      DataBreachStatus   @default(DETECTED)
+
+  // Data yang terdampak
+  affectedDataTypes String?      // JSON string of data types (e.g., ["NIK", "email"])
+  affectedClientIds String?      // JSON string of client IDs affected
+  estimatedAffectedCount Int     @default(0)  // Perkiraan jumlah klien terdampak
+
+  // Timeline
+  detectedAt  DateTime           // Waktu deteksi
+  occurredAt  DateTime?          // Perkiraan waktu kejadian
+  containedAt DateTime?          // Waktu dikendalikan
+  resolvedAt  DateTime?          // Waktu diselesaikan
+
+  // Notifikasi
+  notifiedAt  DateTime?          // Waktu notifikasi dikirim
+  notifiedTo  String?            // JSON string pihak yang dinotifikasi (e.g., ["clients", "OJK", "Kominfo"])
+  notificationMethod String?     // Cara notifikasi (email, surat, dll)
+
+  // Investigasi
+  rootCause   String?            // Penyebab utama
+  correctiveActions String?      // JSON string tindakan korektif
+  preventiveActions String?      // JSON string tindakan pencegahan
+
+  // Metadata
+  reportedBy  String?            // User ID yang melaporkan
+  notes       String?
+
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+
+  @@index([severity])
+  @@index([status])
+  @@index([detectedAt])
+  @@index([createdAt])
 }

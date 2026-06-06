@@ -6,11 +6,13 @@
 // ============================================
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { User, Building2, Users, FileText, Shield } from 'lucide-react';
+import { User, Building2, Users, FileText, Shield, UserCheck, AlertTriangle } from 'lucide-react';
 import ProfileSettings from './profile';
 import NotarisSettings from './notaris';
 import UserManagement from './users';
 import AuditLogView from './audit-log';
+import DataSubjectRequests from './data-subject-requests';
+import DataBreachManagement from './data-breach';
 
 export default function SettingsPage() {
   return (
@@ -25,7 +27,7 @@ export default function SettingsPage() {
 
       {/* Tabs */}
       <Tabs defaultValue="profile" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-4 md:w-auto md:inline-grid">
+        <TabsList className="grid w-full grid-cols-6 md:w-auto md:inline-grid">
           <TabsTrigger value="profile" className="flex items-center gap-2">
             <User className="h-4 w-4" />
             <span className="hidden md:inline">Profil</span>
@@ -37,6 +39,14 @@ export default function SettingsPage() {
           <TabsTrigger value="users" className="flex items-center gap-2">
             <Users className="h-4 w-4" />
             <span className="hidden md:inline">Pengguna</span>
+          </TabsTrigger>
+          <TabsTrigger value="data-subject" className="flex items-center gap-2">
+            <UserCheck className="h-4 w-4" />
+            <span className="hidden md:inline">Hak Subjek Data</span>
+          </TabsTrigger>
+          <TabsTrigger value="data-breach" className="flex items-center gap-2">
+            <AlertTriangle className="h-4 w-4" />
+            <span className="hidden md:inline">Insiden Data</span>
           </TabsTrigger>
           <TabsTrigger value="audit" className="flex items-center gap-2">
             <Shield className="h-4 w-4" />
@@ -57,6 +67,16 @@ export default function SettingsPage() {
         {/* User Management */}
         <TabsContent value="users" className="space-y-4">
           <UserManagement />
+        </TabsContent>
+
+        {/* Data Subject Requests */}
+        <TabsContent value="data-subject" className="space-y-4">
+          <DataSubjectRequests />
+        </TabsContent>
+
+        {/* Data Breach Management */}
+        <TabsContent value="data-breach" className="space-y-4">
+          <DataBreachManagement />
         </TabsContent>
 
         {/* Audit Log */}

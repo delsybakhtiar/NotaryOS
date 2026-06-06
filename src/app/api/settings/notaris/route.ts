@@ -83,6 +83,12 @@ export async function POST(request: NextRequest) {
       documentPrefix,
       invoicePrefix,
       notes,
+      // UU PDP Compliance
+      privacyPolicy,
+      dataRetentionYears,
+      auditLogRetentionMonths,
+      dpoEmail,
+      dpoName,
     } = body;
 
     // Get existing settings
@@ -107,6 +113,12 @@ export async function POST(request: NextRequest) {
           documentPrefix,
           invoicePrefix,
           notes,
+          // UU PDP Compliance
+          privacyPolicy,
+          dataRetentionYears: dataRetentionYears ? parseInt(dataRetentionYears) : 10,
+          auditLogRetentionMonths: auditLogRetentionMonths ? parseInt(auditLogRetentionMonths) : 6,
+          dpoEmail,
+          dpoName,
         },
       });
     } else {
@@ -127,6 +139,12 @@ export async function POST(request: NextRequest) {
           documentPrefix,
           invoicePrefix,
           notes,
+          // UU PDP Compliance
+          privacyPolicy,
+          dataRetentionYears: dataRetentionYears ? parseInt(dataRetentionYears) : 10,
+          auditLogRetentionMonths: auditLogRetentionMonths ? parseInt(auditLogRetentionMonths) : 6,
+          dpoEmail,
+          dpoName,
         },
       });
     }

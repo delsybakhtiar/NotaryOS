@@ -12,7 +12,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
-import { Building2, MapPin, Phone, Mail, Globe, FileText } from 'lucide-react';
+import { Building2, MapPin, Phone, Mail, Globe, FileText, Shield, UserShield, Clock } from 'lucide-react';
 
 interface NotarisSettings {
   id: string;
@@ -31,6 +31,109 @@ interface NotarisSettings {
   invoicePrefix: string;
   logoUrl?: string;
   notes?: string;
+  // UU PDP Compliance
+  privacyPolicy?: string;
+  dataRetentionYears?: number;
+  auditLogRetentionMonths?: number;
+  dpoEmail?: string;
+  dpoName?: string;
+}
+
+// Default privacy policy template compliant with UU PDP
+function getDefaultPrivacyPolicy(): string {
+  return `# KEBIJAKAN PRIVASI KANTOR NOTARIS
+
+Kebijakan Privasi ini menjelaskan bagaimana [Nama Kantor Notaris] mengumpulkan, menggunakan, melindungi, dan menghapus Data Pribadi Anda sesuai dengan Undang-Undang No. 27 Tahun 2022 tentang Perlindungan Data Pribadi (UU PDP).
+
+## 1. DATA YANG DIKUMPULKAN
+
+Kami mengumpulkan Data Pribadi yang diperlukan untuk keperluan notaris dan layanan hukum, meliputi:
+
+### a. Identitas Pribadi
+- Nama lengkap (sesuai KTP)
+- Nomor Induk Kependudukan (NIK)
+- Tanggal dan tempat lahir
+- Alamat lengkap
+- Nomor telepon
+- Alamat email
+
+### b. Data Profesional dan Keuangan
+- Nomor Pokok Wajib Pajak (NPWP)
+- Dokumen identitas perusahaan (untuk korporasi)
+
+### c. Dokumen Pendukung
+- Fotokopi KTP/KK
+- Fotokopi NPWP
+- Dokumen lain yang diperlukan untuk layanan notaris
+
+## 2. TUJUAN PENGOLAHAN DATA
+
+Data Pribadi Anda kami proses untuk tujuan:
+- Verifikasi identitas (KYC - Know Your Customer)
+- Pembuatan dan perubahan akta
+- Pemberian layanan notaris dan PPAT
+- Kepatuhan hukum dan peraturan
+- Penyimpanan arsip sesuai ketentuan
+- Komunikasi terkait layanan notaris
+
+## 3. DASAR HUKUM PENGOLAHAN
+
+Pengolahan Data Pribadi dilakukan berdasarkan:
+- Persetujuan Anda (Pasal 7 UU PDP)
+- Kepatuhan kewajiban hukum (Pasal 6 huruf a)
+- Pelaksanaan perjanjian (Pasal 6 huruf b)
+- Kepentingan sah notaris (Pasal 6 huruf e)
+
+## 4. HAK ANDA SEBAGAI SUBJEK DATA Pribadi
+
+Sesuai Pasal 26 UU PDP, Anda memiliki hak untuk:
+- Memperoleh konfirmasi tentang keberadaan Data Pribadi Anda
+- Mengakses dan memperoleh Data Pribadi Anda
+- Mengoreksi Data Pribadi yang tidak akurat
+- Menghapus Data Pribadi Anda (dengan pengecualian tertentu)
+- Menolak pemrosesan Data Pribadi Anda
+- Meminta pemindahan Data Pribadi Anda
+- Membatasi pemrosesan Data Pribadi Anda
+- Menarik persetujuan pemrosesan Data Pribadi
+
+## 5. KEAMANAN DATA Pribadi
+
+Kami menerapkan langkah-langkah keamanan fisik dan teknis untuk melindungi Data Pribadi Anda, termasuk:
+- Enkripsi data dan password
+- Akses terbatas berdasarkan peran
+- Pencatatan aktivitas (audit trail) selama minimal 6 bulan
+- Backup rutin dan proteksi terhadap kehilangan data
+
+## 6. RETENSI DATA
+
+Data Pribadi Anda akan disimpan sesuai dengan:
+- Ketentuan retensi dokumen notaris (umumnya 10 tahun)
+- Audit log disimpan minimal 6 bulan (Pasal 31 UU PDP)
+- Setelah masa retensi berakhir, data akan dihapus atau diarsipkan dengan aman
+
+## 7. PEMBERITAHUAN PELANGGARAN DATA
+
+Jika terjadi pelanggaran Data Pribadi yang berpotensi merugikan Anda, kami akan memberitahu Anda paling lambat 3 x 24 jam sejak pelanggaran diketahui (Pasal 34 UU PDP).
+
+## 8. DATA PROTECTION OFFICER (DPO)
+
+Untuk pertanyaan atau permintaan terkait Data Pribadi Anda, silakan hubungi:
+- Nama DPO: [Nama DPO]
+- Email: [Email DPO]
+- Telepon: [Nomor Telepon]
+
+## 9. PERUBAHAN KEBIJAKAN
+
+Kami dapat memperbarui Kebijakan Privasi ini dari waktu ke waktu. Perubahan akan diberitahukan kepada Anda.
+
+## 10. KONTAK
+
+Untuk pertanyaan lebih lanjut, hubungi:
+[Nama Kantor Notaris]
+[Alamat Lengkap]
+[Email]
+[Telepon]
+`;
 }
 
 export default function NotarisSettingsComponent() {
@@ -52,6 +155,12 @@ export default function NotarisSettingsComponent() {
     documentPrefix: 'AKTA',
     invoicePrefix: 'INV',
     notes: '',
+    // UU PDP Compliance
+    privacyPolicy: '',
+    dataRetentionYears: 10,
+    auditLogRetentionMonths: 6,
+    dpoEmail: '',
+    dpoName: '',
   });
 
   useEffect(() => {
@@ -80,6 +189,12 @@ export default function NotarisSettingsComponent() {
           documentPrefix: data.settings.documentPrefix || 'AKTA',
           invoicePrefix: data.settings.invoicePrefix || 'INV',
           notes: data.settings.notes || '',
+          // UU PDP Compliance
+          privacyPolicy: data.settings.privacyPolicy || getDefaultPrivacyPolicy(),
+          dataRetentionYears: data.settings.dataRetentionYears || 10,
+          auditLogRetentionMonths: data.settings.auditLogRetentionMonths || 6,
+          dpoEmail: data.settings.dpoEmail || '',
+          dpoName: data.settings.dpoName || '',
         });
       }
     } catch (error) {
@@ -331,6 +446,108 @@ export default function NotarisSettingsComponent() {
                   Contoh: INV-2024-0001
                 </p>
               </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* UU PDP Compliance */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Shield className="h-5 w-5" />
+              Kepatuhan UU PDP
+            </CardTitle>
+            <CardDescription>
+              Pengaturan kepatuhan Undang-Undang Perlindungan Data Pribadi (UU PDP)
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {/* Data Protection Officer */}
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="dpoName" className="flex items-center gap-2">
+                  <UserShield className="h-4 w-4" />
+                  Nama Data Protection Officer
+                </Label>
+                <Input
+                  id="dpoName"
+                  value={formData.dpoName}
+                  onChange={(e) => setFormData({ ...formData, dpoName: e.target.value })}
+                  placeholder="Nama DPO"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Penanggung jawab perlindungan data di kantor notaris
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="dpoEmail">Email DPO</Label>
+                <Input
+                  id="dpoEmail"
+                  type="email"
+                  value={formData.dpoEmail}
+                  onChange={(e) => setFormData({ ...formData, dpoEmail: e.target.value })}
+                  placeholder="dpo@notaris.com"
+                />
+              </div>
+            </div>
+
+            {/* Data Retention Settings */}
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="dataRetentionYears" className="flex items-center gap-2">
+                  <Clock className="h-4 w-4" />
+                  Retensi Data Klien (Tahun)
+                </Label>
+                <Input
+                  id="dataRetentionYears"
+                  type="number"
+                  min="1"
+                  max="50"
+                  value={formData.dataRetentionYears}
+                  onChange={(e) => setFormData({ ...formData, dataRetentionYears: parseInt(e.target.value) || 10 })}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Durasi penyimpanan data klien (Pasal 32 UU PDP)
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="auditLogRetentionMonths" className="flex items-center gap-2">
+                  <Clock className="h-4 w-4" />
+                  Retensi Audit Log (Bulan)
+                </Label>
+                <Input
+                  id="auditLogRetentionMonths"
+                  type="number"
+                  min="6"
+                  max="120"
+                  value={formData.auditLogRetentionMonths}
+                  onChange={(e) => setFormData({ ...formData, auditLogRetentionMonths: parseInt(e.target.value) || 6 })}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Minimum 6 bulan sesuai Pasal 31 UU PDP
+                </p>
+              </div>
+            </div>
+
+            {/* Privacy Policy */}
+            <div className="space-y-2">
+              <Label htmlFor="privacyPolicy" className="flex items-center gap-2">
+                <Shield className="h-4 w-4" />
+                Kebijakan Privasi
+              </Label>
+              <Textarea
+                id="privacyPolicy"
+                value={formData.privacyPolicy}
+                onChange={(e) => setFormData({ ...formData, privacyPolicy: e.target.value })}
+                placeholder="Kebijakan privasi kantor notaris..."
+                rows={15}
+                className="font-mono text-sm"
+              />
+              <p className="text-xs text-muted-foreground">
+                Kebijakan privasi akan ditampilkan saat mengumpulkan data klien. Template default sesuai UU PDP sudah disediakan.
+              </p>
             </div>
           </CardContent>
         </Card>

@@ -73,6 +73,9 @@ export async function createClient(formData: FormData) {
       province: formData.get('province'),
       postalCode: formData.get('postalCode'),
       notes: formData.get('notes'),
+      // UU PDP Consent
+      dataConsentGiven: formData.get('dataConsentGiven') === 'true',
+      canContactForMarketing: formData.get('canContactForMarketing') === 'true',
     };
 
     // Validate input
@@ -111,6 +114,10 @@ export async function createClient(formData: FormData) {
         notes: validatedData.notes || null,
         kycStatus: 'PENDING',
         createdByUserId: user.id,
+        // UU PDP Consent
+        dataConsentGiven: rawData.dataConsentGiven,
+        dataConsentGivenAt: rawData.dataConsentGiven ? new Date() : null,
+        canContactForMarketing: rawData.canContactForMarketing,
       },
     });
 

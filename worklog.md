@@ -182,3 +182,61 @@ Stage Summary:
 - Server is running and functional on port 3000
 - Ready for user testing via Preview Panel
 
+
+---
+Task ID: pdp-1
+Agent: Z.ai Code
+Task: UU PDP Compliance Implementation
+
+Work Log:
+- Updated prisma/schema.prisma with UU PDP compliance models:
+  * Added DataSubjectRequest model (Pasal 26 - Hak Subjek Data)
+  * Added DataBreach model (Pasal 34 - Notifikasi Pelanggaran Data)
+  * Added UU PDP fields to NotarisSettings (privacyPolicy, dataRetentionYears, auditLogRetentionMonths, dpoEmail, dpoName)
+  * Added UU PDP consent fields to Client model (dataConsentGiven, dataConsentGivenAt, dataConsentExpiresAt, canContactForMarketing)
+- Pushed schema changes to database using `bun run db:push`
+- Updated src/app/dashboard/settings/notaris.tsx:
+  * Added privacy policy editor with default UU PDP compliant template
+  * Added data retention settings (data clients, audit log)
+  * Added Data Protection Officer (DPO) fields
+  * Added UI for UU PDP compliance settings
+- Updated src/app/api/settings/notaris/route.ts to save UU PDP fields
+- Updated src/app/dashboard/clients/new/page.tsx:
+  * Added consent checkbox for data processing (required)
+  * Added marketing consent checkbox (optional)
+  * Added privacy policy dialog for clients to view
+  * Disabled submit button until consent is given
+- Updated src/lib/actions/client.ts:
+  * Modified createClient to save consent data
+  * Added dataConsentGiven, dataConsentGivenAt, canContactForMarketing fields
+- Created src/app/dashboard/settings/data-subject-requests.tsx:
+  * Data subject rights management interface
+  * Support for ACCESS, CORRECTION, DELETION, RESTRICTION, OBJECTION, PORTABILITY requests
+  * Request filtering and status management
+- Created src/app/dashboard/settings/data-breach.tsx:
+  * Data breach incident recording
+  * Severity tracking (LOW, MEDIUM, HIGH, CRITICAL)
+  * Status tracking (DETECTED, INVESTIGATING, CONTAINED, RESOLVED, NOTIFIED)
+  * Notification management per Pasal 34 (3x24 hour requirement)
+- Created API routes:
+  * GET/POST /api/settings/data-subject-requests
+  * PATCH /api/settings/data-subject-requests/[id]
+  * GET/POST /api/settings/data-breach
+  * PATCH /api/settings/data-breach/[id]
+- Updated src/app/dashboard/settings/page.tsx:
+  * Added new tabs for Data Subject Rights and Data Breach Management
+  * Expanded tab layout from 4 to 6 tabs
+
+Stage Summary:
+- Complete UU PDP compliance implementation for NotaryOS
+- Pasal 5 (Legal Basis): Privacy policy template provided
+- Pasal 7 (Consent): Required consent checkbox with timestamp
+- Pasal 26 (Data Subject Rights): Request management system implemented
+- Pasal 31 (Audit Log Retention): Configurable minimum 6-month retention
+- Pasal 32 (Data Retention): Configurable client data retention
+- Pasal 34 (Data Breach Notification): Incident management with 3x24h alert
+- DPO designation fields added
+- All changes pushed to database and verified
+- Dev server running without errors
+
+---

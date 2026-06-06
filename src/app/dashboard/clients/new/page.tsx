@@ -5,7 +5,7 @@
 // Form to add new client
 // ============================================
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/actions/client';
 import { Button } from '@/components/ui/button';
@@ -16,7 +16,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2, ArrowLeft } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Loader2, ArrowLeft, Shield, FileText, Info } from 'lucide-react';
 import Link from 'next/link';
 
 export default function NewClientPage() {
@@ -24,7 +26,9 @@ export default function NewClientPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [clientType, setClientType] = useState<'INDIVIDUAL' | 'CORPORATE'>('INDIVIDUAL');
-  
+  const [showPrivacyPolicy, setShowPrivacyPolicy] = useState(false);
+  const [privacyPolicy, setPrivacyPolicy] = useState('');
+
   const [formData, setFormData] = useState({
     // Individual fields
     firstName: '',
@@ -44,7 +48,21 @@ export default function NewClientPage() {
     province: '',
     postalCode: '',
     notes: '',
+    // UU PDP Consent
+    dataConsentGiven: false,
+    canContactForMarketing: false,
   });
+
+  // Fetch privacy policy on mount
+  useEffect(() => {
+    fetch('/api/settings/notaris')
+      .then(res => res.json())
+      .then(data => {
+        if (data.success && data.settings?.privacyPolicy) {
+          setPrivacyPolicy(data.settings.privacyPolicy);
+        }
+      });
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -318,6 +336,76 @@ export default function NewClientPage() {
               </div>
             </div>
 
+            {/* UU PDP - Consent & Privacy Policy */}
+            <div className="mt-6 pt-6 border-t">
+              <div className="space-y-4">
+                <div className="flex items-start gap-3">
+                  <Checkbox
+                    id="dataConsentGiven"
+                    checked={formData.dataConsentGiven}
+                    onCheckedChange={(checked) => setFormData({ ...formData, dataConsentGiven: checked as boolean })}
+                  />
+                  <div className="space-y-1">
+                    <Label htmlFor="dataConsentGiven" className="cursor-pointer font-medium">
+                      Saya menyetujui pengolahan Data Pribadi saya sesuai Kebijakan Privasi
+                    </Label>
+                    <p className="text-xs text-muted-foreground">
+                      Wajib disetujui sesuai Pasal 7 UU PDP
+                    </p>
+                  </div>
+                  <Dialog open={showPrivacyPolicy} onOpenChange={setShowPrivacyPolicy}>
+                    <DialogTrigger asChild>
+                      <Button variant="ghost" size="sm" type="button">
+                        <FileText className="h-4 w-4 mr-1" />
+                        Lihat Kebijakan
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+                      <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2">
+                          <Shield className="h-5 w-5" />
+                          Kebijakan Privasi
+                        </DialogTitle>
+                        <DialogDescription>
+                          Kebijakan Privasi ini mengatur pengolahan Data Pribadi sesuai UU PDP
+                        </DialogDescription>
+                      </DialogHeader>
+                      <div className="mt-4">
+                        <pre className="whitespace-pre-wrap text-xs font-sans leading-relaxed">
+                          {privacyPolicy || 'Kebijakan privasi belum diatur oleh administrator.'}
+                        </pre>
+                      </div>
+                    </DialogContent>
+                  </Dialog>
+                </div>
+
+                <div className="flex items-start gap-3">
+                  <Checkbox
+                    id="canContactForMarketing"
+                    checked={formData.canContactForMarketing}
+                    onCheckedChange={(checked) => setFormData({ ...formData, canContactForMarketing: checked as boolean })}
+                  />
+                  <div className="space-y-1">
+                    <Label htmlFor="canContactForMarketing" className="cursor-pointer">
+                      Saya bersedia dihubungi untuk informasi layanan dan penawaran
+                    </Label>
+                    <p className="text-xs text-muted-foreground">
+                      Opsional - dapat dicentang jika diinginkan
+                    </p>
+                  </div>
+                </div>
+
+                {!formData.dataConsentGiven && (
+                  <Alert variant="destructive">
+                    <Info className="h-4 w-4" />
+                    <AlertDescription>
+                      Anda harus menyetujui pengolahan Data Pribadi sesuai Kebijakan Privasi sebelum menyimpan data klien.
+                    </AlertDescription>
+                  </Alert>
+                )}
+              </div>
+            </div>
+
             {/* Actions */}
             <div className="mt-6 flex gap-3 justify-end">
               <Link href="/dashboard/clients">
@@ -325,7 +413,7 @@ export default function NewClientPage() {
                   Batal
                 </Button>
               </Link>
-              <Button type="submit" disabled={loading}>
+              <Button type="submit" disabled={loading || !formData.dataConsentGiven}>
                 {loading ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
