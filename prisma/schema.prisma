@@ -467,3 +467,40 @@ model Notification {
   @@index([status])
   @@index([createdAt])
 }
+
+// ============================================
+// NOTARIS SETTINGS
+// ============================================
+
+model NotarisSettings {
+  id          String   @id @default(cuid())
+
+  // Kantor Notaris Info
+  officeName  String   // Nama Kantor Notaris
+  officeAddress String  // Alamat lengkap
+  city        String   // Kota
+  province    String   // Provinsi
+  postalCode  String   // Kode pos
+  phone       String   // Nomor telepon
+  email       String   // Email resmi
+  website     String?  // Website (opsional)
+
+  // Info Notaris
+  notarisName String   // Nama Notaris
+  notarisNumber String? // Nomor SK Notaris
+  notarisRegion String? // Wilayah kerja notaris
+
+  // Dokumen Settings
+  documentPrefix String @default("AKTA") // Prefix nomor dokumen
+  invoicePrefix  String @default("INV")  // Prefix nomor invoice
+
+  // Metadata
+  logoUrl    String?  // URL logo kantor
+  notes      String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([city])
+  @@index([province])
+}
