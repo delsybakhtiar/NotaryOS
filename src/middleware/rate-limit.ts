@@ -134,8 +134,15 @@ export function rateLimitMiddleware(request: NextRequest): NextResponse | null {
   if (
     pathname.startsWith('/_next') ||
     pathname.startsWith('/static') ||
-    pathname.includes('.')
+    pathname.includes('.') ||
+    pathname.startsWith('/favicon') ||
+    pathname.startsWith('/api/auth')
   ) {
+    return null;
+  }
+
+  // Disable rate limiting in development
+  if (process.env.NODE_ENV === 'development') {
     return null;
   }
 
