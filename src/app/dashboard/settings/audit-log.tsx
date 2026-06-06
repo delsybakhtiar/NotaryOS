@@ -45,9 +45,9 @@ export default function AuditLogView() {
 
   const [filters, setFilters] = useState({
     search: '',
-    action: '',
-    status: '',
-    entityType: '',
+    action: 'ALL',
+    status: 'ALL',
+    entityType: 'ALL',
   });
 
   useEffect(() => {
@@ -58,7 +58,9 @@ export default function AuditLogView() {
     try {
       setLoading(true);
       const params = new URLSearchParams(
-        Object.entries(filters).filter(([_, v]) => v !== '') as [string, string][]
+        Object.entries(filters)
+          .filter(([_, v]) => v !== '' && v !== 'ALL')
+          .map(([k, v]) => [k, v] as [string, string])
       );
 
       const response = await fetch(`/api/settings/audit-log?${params}`);
@@ -133,7 +135,7 @@ export default function AuditLogView() {
                   <SelectValue placeholder="Semua" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Semua</SelectItem>
+                  <SelectItem value="ALL">Semua</SelectItem>
                   <SelectItem value="CREATE">CREATE</SelectItem>
                   <SelectItem value="UPDATE">UPDATE</SelectItem>
                   <SelectItem value="DELETE">DELETE</SelectItem>
@@ -155,7 +157,7 @@ export default function AuditLogView() {
                   <SelectValue placeholder="Semua" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Semua</SelectItem>
+                  <SelectItem value="ALL">Semua</SelectItem>
                   <SelectItem value="SUCCESS">SUCCESS</SelectItem>
                   <SelectItem value="FAILURE">FAILURE</SelectItem>
                 </SelectContent>
@@ -172,7 +174,7 @@ export default function AuditLogView() {
                   <SelectValue placeholder="Semua" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Semua</SelectItem>
+                  <SelectItem value="ALL">Semua</SelectItem>
                   <SelectItem value="User">User</SelectItem>
                   <SelectItem value="Client">Client</SelectItem>
                   <SelectItem value="Document">Document</SelectItem>
