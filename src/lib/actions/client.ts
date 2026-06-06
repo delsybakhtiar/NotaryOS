@@ -450,13 +450,21 @@ export async function verifyKyc(clientId: string, kycStatus: 'VERIFIED' | 'REJEC
       kycVerifiedBy: kycStatus === 'VERIFIED' ? user.id : null,
     };
 
-    // Only include kycRejectNotes if the field exists in database
+    // Try to add kycRejectNotes - wrap in try/catch for backward compatibility
     try {
+      // First, check if the field exists by trying a query
+      const testClient = await db.client.findUnique({
+        where: { id: clientId },
+        select: { kycRejectNotes: true }
+      });
+
+      // If field exists (returns result), add it to updateData
       if (kycStatus === 'REJECTED' && notes) {
         updateData.kycRejectNotes = notes;
       }
     } catch (e) {
-      // Field not yet in database
+      // Field doesn't exist in database yet - skip it
+      console.log('kycRejectNotes field not in database yet');
     }
 
     const updatedClient = await db.client.update({
@@ -478,25 +486,30 @@ export async function verifyKyc(clientId: string, kycStatus: 'VERIFIED' | 'REJEC
       },
     );
 
-    // Create notification for staff who created this client
+    // Create notification for staff who created this client (if notification table exists)
     if (existingClient.createdByUserId && existingClient.createdByUserId !== user.id) {
-      await db.notification.create({
-        data: {
-          userId: existingClient.createdByUserId,
-          type: 'KYC_STATUS_CHANGE',
-          title: kycStatus === 'VERIFIED' ? 'KYC Disetujui' : 'KYC Ditolak',
-          message: `Klien ${existingClient.name} (${existingClient.clientCode}) ${kycStatus === 'VERIFIED' ? 'telah disetujui' : 'ditolak'} oleh ${user.name}${kycStatus === 'REJECTED' && notes ? `. Catatan: ${notes}` : ''}`,
-          actionUrl: `/dashboard/clients/${existingClient.id}`,
-          metadata: JSON.stringify({
-            clientId: existingClient.id,
-            clientName: existingClient.name,
-            clientCode: existingClient.clientCode,
-            oldStatus: existingClient.kycStatus,
-            newStatus: kycStatus,
-            rejectionNotes: kycStatus === 'REJECTED' ? notes : null,
-          }),
-        },
-      });
+      try {
+        await db.notification.create({
+          data: {
+            userId: existingClient.createdByUserId,
+            type: 'KYC_STATUS_CHANGE',
+            title: kycStatus === 'VERIFIED' ? 'KYC Disetujui' : 'KYC Ditolak',
+            message: `Klien ${existingClient.name} (${existingClient.clientCode}) ${kycStatus === 'VERIFIED' ? 'telah disetujui' : 'ditolak'} oleh ${user.name}${kycStatus === 'REJECTED' && notes ? `. Catatan: ${notes}` : ''}`,
+            actionUrl: `/dashboard/clients/${existingClient.id}`,
+            metadata: JSON.stringify({
+              clientId: existingClient.id,
+              clientName: existingClient.name,
+              clientCode: existingClient.clientCode,
+              oldStatus: existingClient.kycStatus,
+              newStatus: kycStatus,
+              rejectionNotes: kycStatus === 'REJECTED' ? notes : null,
+            }),
+          },
+        });
+      } catch (e) {
+        // Notification table doesn't exist yet - skip
+        console.log('Notification table not in database yet');
+      }
     }
 
     // Revalidate path
