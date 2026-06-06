@@ -35,7 +35,7 @@ export default function HomePage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
+    <div className="min-h-screen flex flex-col bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
       {/* Header */}
       <header className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
@@ -183,10 +183,10 @@ export default function HomePage() {
       </main>
 
       {/* Footer */}
-      <footer className="border-t mt-16">
+      <footer className="border-t mt-auto">
         <div className="container mx-auto px-4 py-6">
           <p className="text-center text-sm text-muted-foreground">
-            © 2024 NotaryOS. Sistem Administrasi Kantor Notaris dengan keamanan data berlapis.
+            © 2026 Vura Design. All rights reserved.
           </p>
         </div>
       </footer>

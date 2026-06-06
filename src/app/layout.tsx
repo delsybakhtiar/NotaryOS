@@ -17,15 +17,15 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "NotaryOS - Sistem Administrasi Kantor Notaris",
+  title: "NotaryOS | Vura Design",
   description: "Sistem administrasi kantor notaris modern dengan keamanan data berlapis dan audit logging lengkap",
-  keywords: ["NotaryOS", "Notaris", "Administrasi", "Akta", "Keamanan Data"],
-  authors: [{ name: "NotaryOS Team" }],
+  keywords: ["NotaryOS", "Notaris", "Administrasi", "Akta", "Keamanan Data", "Vura Design"],
+  authors: [{ name: "Vura Design" }],
   icons: {
     icon: "https://z-cdn.chatglm.cn/z-ai/static/logo.svg",
   },
   openGraph: {
-    title: "NotaryOS - Sistem Administrasi Kantor Notaris",
+    title: "NotaryOS | Vura Design - Sistem Administrasi Kantor Notaris",
     description: "Sistem administrasi kantor notaris modern",
     type: "website",
   },
