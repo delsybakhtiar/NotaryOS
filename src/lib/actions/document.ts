@@ -250,12 +250,24 @@ export async function getDocuments(filters?: {
  * Get a single document by ID
  */
 export async function getDocumentById(id: string) {
+  console.log('[getDocumentById] Received ID:', id);
+
   const user = await getCurrentUser();
   if (!user) {
     redirect('/login');
   }
 
+  // Validate ID
+  if (!id) {
+    console.error('[getDocumentById] ID is missing or empty');
+    return {
+      success: false,
+      error: 'Document ID is missing',
+    };
+  }
+
   try {
+    console.log('[getDocumentById] Querying document with ID:', id);
     const document = await db.document.findUnique({
       where: { id },
       include: {
@@ -284,6 +296,8 @@ export async function getDocumentById(id: string) {
       },
     });
 
+    console.log('[getDocumentById] Document found:', !!document);
+
     if (!document) {
       return {
         success: false,
@@ -307,7 +321,7 @@ export async function getDocumentById(id: string) {
       document,
     };
   } catch (error: any) {
-    console.error('Error fetching document:', error);
+    console.error('[getDocumentById] Error:', error);
     return {
       success: false,
       error: error.message || 'Gagal mengambil data dokumen',
