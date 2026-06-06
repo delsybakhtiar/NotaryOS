@@ -32,7 +32,7 @@ import {
   MapPin,
   ShieldCheck,
   ShieldX,
-  CheckCircle,
+  CheckCircle2,
   XCircle,
   Clock,
   FileText,
@@ -144,7 +144,7 @@ export default function KycReviewPage({ client }: KycReviewPageProps) {
       {/* Status Alert */}
       {isVerified && (
         <Alert className="bg-green-50 border-green-200 dark:bg-green-950 dark:border-green-800">
-          <CheckCircle className="h-4 w-4 text-green-600" />
+          <CheckCircle2 className="h-4 w-4 text-green-600" />
           <AlertTitle className="text-green-600">KYC Terverifikasi</AlertTitle>
           <AlertDescription>
             KYC klien ini telah disetujui pada{' '}

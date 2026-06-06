@@ -305,7 +305,7 @@ async function KycReviewPage({
                 <>
                   {client.kycVerifiedAt && (
                     <div className="flex items-center p-3 bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-900 rounded-lg">
-                      <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-500 mr-3" />
+                      <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-500 mr-3" />
                       <div>
                         <p className="text-sm font-medium text-green-800 dark:text-green-300">
                           Terverifikasi pada
