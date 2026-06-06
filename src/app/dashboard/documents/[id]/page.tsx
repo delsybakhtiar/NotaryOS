@@ -8,6 +8,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { useSession } from 'next-auth/react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -54,6 +55,7 @@ import {
   Calendar,
   Trash2,
   ChevronRight,
+  ArrowRightLeft,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
@@ -123,6 +125,7 @@ interface Document {
 export default function DocumentDetailPage() {
   const params = useParams();
   const router = useRouter();
+  const { data: session } = useSession();
   const documentId = params.id as string;
 
   const [document, setDocument] = useState<Document | null>(null);
@@ -131,6 +134,7 @@ export default function DocumentDetailPage() {
   const [activeTab, setActiveTab] = useState('editor');
   const [changeNotes, setChangeNotes] = useState('');
   const [isDirty, setIsDirty] = useState(false);
+  const [changingStatus, setChangingStatus] = useState(false);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -240,7 +244,10 @@ export default function DocumentDetailPage() {
   };
 
   const handleStatusChange = async (newStatus: string) => {
+    if (newStatus === document?.status) return;
+
     try {
+      setChangingStatus(true);
       const response = await fetch(`/api/documents/${documentId}/status`, {
         method: 'POST',
         headers: {
@@ -260,6 +267,8 @@ export default function DocumentDetailPage() {
     } catch (error) {
       console.error('Error changing status:', error);
       toast.error('Terjadi kesalahan saat mengubah status');
+    } finally {
+      setChangingStatus(false);
     }
   };
 
@@ -316,13 +325,14 @@ export default function DocumentDetailPage() {
   }
 
   const transitions = allowedTransitions[document.status] || [];
+  const isAdmin = session?.user?.role === 'ADMIN';
 
   return (
     <div className="flex-1 space-y-4 p-4 md:p-8">
       {/* Header */}
       <div className="flex items-start justify-between gap-4">
         <div className="flex-1">
-          <div className="flex items-center gap-2 mb-2">
+          <div className="flex items-center gap-2 mb-2 flex-wrap">
             <Link href="/dashboard/documents">
               <Button variant="ghost" size="icon">
                 <ArrowLeft className="h-4 w-4" />
@@ -339,7 +349,33 @@ export default function DocumentDetailPage() {
           </p>
         </div>
 
-        <div className="flex gap-2">
+        <div className="flex gap-2 items-start flex-wrap">
+          {/* Status Dropdown - Only for ADMIN */}
+          {isAdmin && transitions.length > 0 && (
+            <div className="flex items-center gap-2">
+              <ArrowRightLeft className="h-4 w-4 text-muted-foreground" />
+              <Select
+                value={document.status}
+                onValueChange={handleStatusChange}
+                disabled={changingStatus || isDirty}
+              >
+                <SelectTrigger className="w-48">
+                  <SelectValue placeholder="Ubah Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={document.status} disabled>
+                    {StatusLabels[document.status]} (Saat ini)
+                  </SelectItem>
+                  {transitions.map((transition) => (
+                    <SelectItem key={transition.value} value={transition.value}>
+                      {transition.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
           {isDirty && (
             <Button onClick={handleSave} disabled={saving}>
               {saving ? (
@@ -584,31 +620,6 @@ export default function DocumentDetailPage() {
               </div>
             </CardContent>
           </Card>
-
-          {/* Status Transition */}
-          {transitions.length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Ubah Status</CardTitle>
-                <CardDescription>
-                  Ubah status dokumen sesuai tahapan yang sesuai
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="flex gap-2 flex-wrap">
-                  {transitions.map((transition) => (
-                    <Button
-                      key={transition.value}
-                      variant="outline"
-                      onClick={() => handleStatusChange(transition.value)}
-                    >
-                      {transition.label}
-                    </Button>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          )}
         </TabsContent>
 
         {/* Versions Tab */}
