@@ -1,6 +1,29 @@
 # Environment Setup Guide
 
-## Setup Local Environment
+## ⚡ Quick Setup (Recommended)
+
+Use the automated setup script to configure everything:
+
+```bash
+# Make script executable (if needed)
+chmod +x setup.sh
+
+# Run setup script
+./setup.sh
+
+# Start dev server
+bun run dev
+```
+
+The script will:
+- ✅ Auto-detect database location
+- ✅ Create `.env.local` with correct paths
+- ✅ Generate secure `NEXTAUTH_SECRET`
+- ✅ Verify database connection
+
+---
+
+## 📋 Manual Setup
 
 1. Copy example file:
 ```bash
