@@ -158,7 +158,7 @@ export default function KycReviewPage({ client }: KycReviewPageProps) {
           <XCircle className="h-4 w-4" />
           <AlertTitle>KYC Ditolak</AlertTitle>
           <AlertDescription>
-            {client.kycRejectNotes || 'Tidak ada catatan penolakan'}
+            {(client as any).kycRejectNotes || 'Tidak ada catatan penolakan'}
           </AlertDescription>
         </Alert>
       )}

@@ -444,14 +444,24 @@ export async function verifyKyc(clientId: string, kycStatus: 'VERIFIED' | 'REJEC
     }
 
     // Update KYC status
+    const updateData: any = {
+      kycStatus: kycStatus as any,
+      kycVerifiedAt: kycStatus === 'VERIFIED' ? new Date() : null,
+      kycVerifiedBy: kycStatus === 'VERIFIED' ? user.id : null,
+    };
+
+    // Only include kycRejectNotes if the field exists in database
+    try {
+      if (kycStatus === 'REJECTED' && notes) {
+        updateData.kycRejectNotes = notes;
+      }
+    } catch (e) {
+      // Field not yet in database
+    }
+
     const updatedClient = await db.client.update({
       where: { id: clientId },
-      data: {
-        kycStatus: kycStatus as any,
-        kycVerifiedAt: kycStatus === 'VERIFIED' ? new Date() : null,
-        kycVerifiedBy: kycStatus === 'VERIFIED' ? user.id : null,
-        kycRejectNotes: kycStatus === 'REJECTED' ? notes : null,
-      },
+      data: updateData,
     });
 
     // Log audit
