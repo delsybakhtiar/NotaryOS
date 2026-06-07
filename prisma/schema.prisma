@@ -20,6 +20,7 @@ enum UserRole {
   ADMIN           // Notaris - Full access
   STAFF           // Staff Operasional - Limited access
   FINANCE         // Finance - Access to financial data only
+  KURIR           // Courier - Delivery access only
 }
 
 enum AuditAction {
@@ -66,6 +67,11 @@ model User {
   clients        Client[]
   invoices       Invoice[]
   notifications  Notification[]
+  
+  // Transaction relations
+  createdTransactions Transaction[] @relation("CreatedTransactions")
+  assignedTransactions Transaction[] @relation("AssignedTransactions")
+  courierDeliveries    Delivery[] @relation("CourierDeliveries")
   
   @@index([email])
   @@index([role])
@@ -224,6 +230,7 @@ model Client {
 
   documents       Document[]
   dataSubjectRequests  DataSubjectRequest[]  // Permintaan dari subjek data (Pasal 26)
+  transactions   Transaction[] @relation("TransactionClient")
 
   @@index([clientCode])
   @@index([clientType])
@@ -628,3 +635,248 @@ model DataBreach {
   @@index([detectedAt])
   @@index([createdAt])
 }
+// ============================================
+// TRANSACTION MANAGEMENT
+// ============================================
+
+enum TransactionStatus {
+  DRAFT           // Draft - initial state
+  SUBMITTED       // Submitted - awaiting review
+  REVIEW          // Review - under review
+  PROCESSING      // Processing - document preparation
+  READY_TO_SIGN   // Ready to sign - awaiting signing
+  SIGNING         // Signing - signing in progress
+  SIGNED          // Signed - documents signed
+  DELIVERY        // Delivery - in delivery
+  COMPLETED       // Completed - all done
+  ON_HOLD         // On hold - temporarily paused
+  CANCELLED       // Cancelled - transaction cancelled
+  ARCHIVED        // Archived - historical record
+}
+
+enum TransactionServiceType {
+  PENDIRIAN_PT    // Pendirian PT
+  AJB             // Akta Jual Beli
+  WARIS           // Waris/Inheritance
+  LEGALISASI      // Legalisasi dokumen
+  PERUBAHAN_PT    // Perubahan PT
+  PEMBERIAN_HAK   // Pemberian Hak Tanggungan
+  SURAT_KUASA     // Surat Kuasa
+  PERJANJIAN      // Perjanjian
+  LAINNYA         // Lainnya
+}
+
+enum TransactionPriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+
+enum TaskStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  BLOCKED
+  SKIPPED
+}
+
+enum ChecklistStatus {
+  PENDING
+  UPLOADED
+  VERIFIED
+  REJECTED
+}
+
+enum DeliveryStatus {
+  PENDING
+  ASSIGNED
+  PICKED_UP
+  IN_TRANSIT
+  DELIVERED
+  FAILED
+  RETURNED
+}
+
+model Transaction {
+  id                  String                 @id @default(cuid())
+
+  // Basic info
+  transactionNumber   String                 @unique // e.g., "TRX-2024-0001"
+  serviceType         TransactionServiceType
+  status              TransactionStatus       @default(DRAFT)
+  priority            TransactionPriority     @default(NORMAL)
+
+  // Relationships
+  clientId            String?
+  client              Client?                @relation("TransactionClient", fields: [clientId], references: [id])
+  
+  assignedTo          String?                 // PIC assigned
+  assignedUser        User?                   @relation("AssignedTransactions", fields: [assignedTo], references: [id])
+  assignedAt          DateTime?
+
+  // SLA tracking
+  slaDeadline          DateTime?
+  slaStatus           String?                // "on_track", "at_risk", "overdue"
+  estimatedCompletion  DateTime?
+  actualCompletion    DateTime?
+
+  // Parties info (JSON)
+  parties             String?                // JSON array of parties
+
+  // Dates
+  scheduledDate       DateTime?              // Scheduled signing date
+  completedAt         DateTime?
+
+  // Notes and metadata
+  notes               String?
+  internalNotes       String?                // For internal staff use
+  metadata            String?                // JSON for additional data
+
+  // QR/Barcode
+  qrCode              String                 @unique
+
+  // Timestamps
+  createdAt           DateTime               @default(now())
+  updatedAt           DateTime               @updatedAt
+
+  // Relations
+  createdBy           User?                  @relation("CreatedTransactions", fields: [createdByUserId], references: [id])
+  createdByUserId     String?
+
+  tasks               TransactionTask[]
+  checklists          TransactionChecklist[]
+  deliveries          Delivery[]
+
+  @@index([transactionNumber])
+  @@index([serviceType])
+  @@index([status])
+  @@index([priority])
+  @@index([clientId])
+  @@index([assignedTo])
+  @@index([slaDeadline])
+  @@index([createdAt])
+  @@index([qrCode])
+  @@index([createdByUserId])
+}
+
+model TransactionTask {
+  id                  String        @id @default(cuid())
+
+  transaction         Transaction  @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  transactionId       String
+
+  title               String
+  description         String?
+  status              TaskStatus    @default(PENDING)
+
+  // Task metadata
+  taskType            String?       // "document", "review", "signing", "delivery", etc.
+  order               Int           // Task order in workflow
+
+  // Assignment
+  assignedTo          String?
+  completedAt         DateTime?
+
+  // Notes
+  notes               String?
+  completedBy         String?
+  completedNotes      String?
+
+  // Timestamps
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
+
+  @@unique([transactionId, taskType, order])
+  @@index([transactionId])
+  @@index([status])
+  @@index([assignedTo])
+}
+
+model TransactionChecklist {
+  id                  String          @id @default(cuid())
+
+  transaction         Transaction      @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  transactionId       String
+
+  documentType        String           // Document type from DocumentType enum
+  documentName        String           // Display name
+  status              ChecklistStatus  @default(PENDING)
+  required            Boolean          @default(true)
+
+  // File tracking
+  fileId              String?          // Actual document ID from Document model
+  uploadedAt          DateTime?
+  verifiedAt          DateTime?
+  verifiedBy          String?
+
+  // Verification notes
+  verificationNotes   String?
+  rejectionReason     String?
+
+  // Timestamps
+  createdAt           DateTime         @default(now())
+  updatedAt           DateTime         @updatedAt
+
+  @@unique([transactionId, documentType])
+  @@index([transactionId])
+  @@index([status])
+  @@index([documentType])
+}
+
+model Delivery {
+  id                  String          @id @default(cuid())
+
+  transaction         Transaction      @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  transactionId       String
+
+  status              DeliveryStatus  @default(PENDING)
+
+  // Courier info
+  courierId           String?          // User ID with KURIR role
+  courier             User?            @relation("CourierDeliveries", fields: [courierId], references: [id])
+  courierName         String?          // Manual override or external courier
+  trackingNumber      String?          @unique
+  courierCompany      String?          // External courier company
+
+  // Address info
+  recipientName       String
+  recipientPhone      String?
+  deliveryAddress     String
+  city                String?
+  province            String?
+  postalCode          String?
+
+  // Special instructions
+  specialInstructions String?
+
+  // Timestamps
+  assignedAt          DateTime?
+  pickedUpAt          DateTime?
+  inTransitAt         DateTime?
+  deliveredAt         DateTime?
+  attemptedAt         DateTime?        // Failed delivery attempt
+
+  // Proof of delivery
+  proofOfDeliveryUrl  String?
+  receivedBy          String?
+  signature           String?          // Base64 signature
+
+  // Notes
+  notes               String?
+  failureReason       String?          // If delivery failed
+
+  // Metadata
+  metadata            String?          // JSON for additional data
+
+  createdAt           DateTime         @default(now())
+  updatedAt           DateTime         @updatedAt
+
+  @@index([transactionId])
+  @@index([status])
+  @@index([courierId])
+  @@index([trackingNumber])
+  @@index([deliveredAt])
+}
+
+// Update User model to include transaction relations

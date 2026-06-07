@@ -8,7 +8,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
-import { Users, FileText, DollarSign, Settings, LayoutDashboard, LogOut, ShieldCheck } from 'lucide-react';
+import { Users, FileText, DollarSign, Settings, LayoutDashboard, LogOut, Briefcase } from 'lucide-react';
 import { signOut } from 'next-auth/react';
 
 interface NavItem {
@@ -23,6 +23,11 @@ const navItems: NavItem[] = [
     title: 'Dashboard',
     href: '/dashboard',
     icon: <LayoutDashboard className="h-4 w-4" />,
+  },
+  {
+    title: 'Transaksi',
+    href: '/dashboard/transactions',
+    icon: <Briefcase className="h-4 w-4" />,
   },
   {
     title: 'Klien & KYC',

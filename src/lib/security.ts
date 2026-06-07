@@ -16,7 +16,7 @@ export function generateSecureToken(length: number = 32): string {
  * Hash a password using bcrypt (via bcryptjs)
  */
 export async function hashPassword(password: string): Promise<string> {
-  const bcrypt = require('bcryptjs');
+  const bcrypt = await import('bcryptjs');
   const saltRounds = 12; // Higher is more secure but slower
   return await bcrypt.hash(password, saltRounds);
 }
@@ -28,7 +28,7 @@ export async function verifyPassword(
   password: string,
   hash: string,
 ): Promise<boolean> {
-  const bcrypt = require('bcryptjs');
+  const bcrypt = await import('bcryptjs');
   return await bcrypt.compare(password, hash);
 }
 
