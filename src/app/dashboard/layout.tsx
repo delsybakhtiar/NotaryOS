@@ -1,6 +1,6 @@
 // ============================================
 // DASHBOARD LAYOUT
-// Layout for all dashboard pages
+// Protected layout with RBAC
 // ============================================
 
 import { type ReactNode } from 'react';
@@ -9,16 +9,102 @@ import { authOptions } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import { DashboardNav } from '@/components/dashboard/dashboard-nav';
 import { UserMenu } from '@/components/dashboard/user-menu';
+import { UserRole } from '@prisma/client';
+
+/**
+ * Role-based route access configuration
+ */
+interface RoleAccessConfig {
+  [key: string]: UserRole[];
+}
+
+const ROLE_ACCESS: RoleAccessConfig = {
+  '/dashboard/owner': [UserRole.ADMIN],
+  '/dashboard/notaris': [UserRole.ADMIN],
+  '/dashboard/staff': [UserRole.STAFF, UserRole.ADMIN],
+  '/dashboard/finance': [UserRole.FINANCE, UserRole.ADMIN],
+  '/dashboard/kurir': [UserRole.KURIR, UserRole.ADMIN],
+  '/dashboard/clients': [UserRole.ADMIN, UserRole.STAFF],
+  '/dashboard/documents': [UserRole.ADMIN, UserRole.STAFF],
+  '/dashboard/settings': [UserRole.ADMIN],
+};
+
+/**
+ * Get allowed redirect path for role
+ */
+function getRoleRedirect(role: UserRole): string {
+  switch (role) {
+    case UserRole.ADMIN:
+      return '/dashboard/notaris';
+    case UserRole.STAFF:
+      return '/dashboard/staff';
+    case UserRole.KURIR:
+      return '/dashboard/kurir';
+    case UserRole.FINANCE:
+      return '/dashboard/finance';
+    default:
+      return '/dashboard';
+  }
+}
+
+/**
+ * Check if user can access a specific path
+ */
+function canAccessPath(path: string, userRole: UserRole): boolean {
+  // Check exact matches
+  if (ROLE_ACCESS[path]) {
+    return ROLE_ACCESS[path].includes(userRole);
+  }
+
+  // Check prefix matches
+  for (const [route, allowedRoles] of Object.entries(ROLE_ACCESS)) {
+    if (path.startsWith(route)) {
+      return allowedRoles.includes(userRole);
+    }
+  }
+
+  // Default: allow if it's a dashboard route
+  return path.startsWith('/dashboard');
+}
 
 export default async function DashboardLayout({
   children,
+  params,
 }: {
   children: ReactNode;
+  params?: { path?: string[] };
 }) {
   const session = await getServerSession(authOptions);
 
-  if (!session) {
+  // 1. Check authentication
+  if (!session?.user) {
     redirect('/login');
+  }
+
+  // 2. Check if user is active
+  if (!session.user.isActive) {
+    redirect('/login?error=account_disabled');
+  }
+
+  const userRole = session.user.role;
+
+  // 3. Get current path from params or construct it
+  // params.path will be undefined for /dashboard route
+  const currentPath = params?.path
+    ? `/dashboard/${params.path.join('/')}`
+    : '/dashboard';
+
+  // 4. Check RBAC for the specific route
+  if (currentPath !== '/dashboard' && !canAccessPath(currentPath, userRole)) {
+    // Redirect to appropriate dashboard for their role
+    const redirectPath = getRoleRedirect(userRole);
+    redirect(redirectPath);
+  }
+
+  // 5. If accessing dashboard index, redirect based on role
+  if (currentPath === '/dashboard') {
+    const redirectPath = getRoleRedirect(userRole);
+    redirect(redirectPath);
   }
 
   return (
@@ -37,7 +123,7 @@ export default async function DashboardLayout({
           </div>
         </div>
 
-        <DashboardNav />
+        <DashboardNav userRole={userRole} />
       </aside>
 
       {/* Main Content */}
