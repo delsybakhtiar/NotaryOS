@@ -12,7 +12,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
-import { Building2, MapPin, Phone, Mail, Globe, FileText, Shield, UserShield, Clock } from 'lucide-react';
+import { Building2, MapPin, Phone, Mail, Globe, FileText, Shield, User, Clock } from 'lucide-react';
 
 interface NotarisSettings {
   id: string;
@@ -466,7 +466,7 @@ export default function NotarisSettingsComponent() {
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="dpoName" className="flex items-center gap-2">
-                  <UserShield className="h-4 w-4" />
+                  <User className="h-4 w-4" />
                   Nama Data Protection Officer
                 </Label>
                 <Input
