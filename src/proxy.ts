@@ -123,24 +123,24 @@ function getDeniedRedirect(userRole: UserRole | undefined): string {
 }
 
 /**
- * Main Middleware with RBAC
+ * Main Proxy with RBAC
  */
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  console.log('[MIDDLEWARE] Processing:', { pathname });
+  console.log('[PROXY] Processing:', { pathname });
 
   // Get token from NextAuth
   const token = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET });
   const userRole = token?.role as UserRole | undefined;
 
-  console.log('[MIDDLEWARE] Auth check:', { pathname, userRole, hasToken: !!token });
+  console.log('[PROXY] Auth check:', { pathname, userRole, hasToken: !!token });
 
   // Skip auth routes and public APIs
   const publicPaths = ['/login', '/api/auth', '/api/setup'];
 
   if (publicPaths.some(path => pathname.startsWith(path))) {
-    console.log('[MIDDLEWARE] Public path, allowing access');
+    console.log('[PROXY] Public path, allowing access');
     return NextResponse.next();
   }
 
@@ -149,19 +149,19 @@ export async function middleware(request: NextRequest) {
     const hasAccess = checkAccess(pathname, userRole, ROLE_ACCESS_RULES);
 
     if (!hasAccess) {
-      console.log('[MIDDLEWARE] Access denied to dashboard:', { pathname, userRole });
+      console.log('[PROXY] Access denied to dashboard:', { pathname, userRole });
 
       // Redirect to appropriate dashboard or login
       const redirectPath = token ? getDeniedRedirect(userRole) : '/login';
 
       // Prevent redirect loop: don't redirect to the same path
       if (redirectPath !== pathname) {
-        console.log('[MIDDLEWARE] Redirecting to:', redirectPath);
+        console.log('[PROXY] Redirecting to:', redirectPath);
         return NextResponse.redirect(new URL(redirectPath, request.url));
       }
     }
 
-    console.log('[MIDDLEWARE] Access granted to dashboard:', pathname);
+    console.log('[PROXY] Access granted to dashboard:', pathname);
   }
 
   // Check API routes
@@ -174,7 +174,7 @@ export async function middleware(request: NextRequest) {
     const hasAccess = checkAccess(pathname, userRole, API_ACCESS_RULES);
 
     if (!hasAccess) {
-      console.log('[MIDDLEWARE] Access denied to API:', { pathname, userRole });
+      console.log('[PROXY] Access denied to API:', { pathname, userRole });
 
       if (!token) {
         return new NextResponse(
@@ -205,14 +205,14 @@ export async function middleware(request: NextRequest) {
       );
     }
 
-    console.log('[MIDDLEWARE] Access granted to API:', pathname);
+    console.log('[PROXY] Access granted to API:', pathname);
   }
 
   return NextResponse.next();
 }
 
 /**
- * Middleware Configuration
+ * Proxy Configuration
  * Applies to all routes except static files and public routes
  */
 export const config = {
