@@ -42,7 +42,6 @@ export default function LoginPage() {
 
       // Redirect to dashboard on successful login
       router.push('/dashboard');
-      router.refresh();
     } catch (err) {
       setError('Terjadi kesalahan. Silakan coba lagi.');
       setLoading(false);
