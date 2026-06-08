@@ -24,6 +24,8 @@ interface NotarisDashboardStats {
 }
 
 export default function NotarisDashboardPage() {
+  console.log('NOTARIS_PAGE_RENDER');
+
   const { data: session, status } = useSession();
   const router = useRouter();
   const [stats, setStats] = useState<NotarisDashboardStats>({
@@ -37,34 +39,40 @@ export default function NotarisDashboardPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    console.log('NOTARIS_EFFECT_1 - Auth Check');
     if (status === 'unauthenticated') {
       router.push('/login');
     }
   }, [status, router]);
 
   useEffect(() => {
+    console.log('NOTARIS_EFFECT_2 - Fetch Data', { status });
     if (status === 'authenticated') {
       fetchDashboardData();
     }
   }, [status]);
 
   const fetchDashboardData = async () => {
+    console.log('NOTARIS_FETCH - Fetching dashboard data');
     try {
       setLoading(true);
       const response = await fetch('/api/dashboard/notaris');
+      console.log('NOTARIS_FETCH - Response received', { status: response.status });
       const data = await response.json();
 
       if (data.success) {
         setStats(data.data);
+        console.log('NOTARIS_FETCH - Stats updated', data.data);
       }
     } catch (error) {
-      console.error('Error fetching dashboard data:', error);
+      console.error('NOTARIS_FETCH - Error:', error);
     } finally {
       setLoading(false);
     }
   };
 
   if (status === 'loading' || loading) {
+    console.log('NOTARIS_RENDER - Loading state', { status, loading });
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="text-center">
@@ -76,9 +84,11 @@ export default function NotarisDashboardPage() {
   }
 
   if (!session) {
+    console.log('NOTARIS_RENDER - No session, returning null');
     return null;
   }
 
+  console.log('NOTARIS_RENDER - Rendering dashboard', { sessionUser: session.user?.email });
   return (
     <div className="space-y-6">
       {/* Welcome Section */}

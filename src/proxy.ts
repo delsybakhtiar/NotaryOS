@@ -128,7 +128,7 @@ function getDeniedRedirect(userRole: UserRole | undefined): string {
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  console.log('[PROXY] Processing:', { pathname });
+  console.log('[PROXY] Processing:', { pathname, timestamp: new Date().toISOString() });
 
   // Get token from NextAuth
   const token = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET });

@@ -74,10 +74,13 @@ export default async function DashboardLayout({
   children: ReactNode;
   params?: { path?: string[] };
 }) {
+  console.log('[DASHBOARD_LAYOUT] Rendering');
+
   const session = await getServerSession(authOptions);
 
   // 1. Check authentication
   if (!session?.user) {
+    console.log('[DASHBOARD_LAYOUT] No session, redirecting to login');
     redirect('/login');
   }
 
@@ -98,12 +101,14 @@ export default async function DashboardLayout({
   if (currentPath !== '/dashboard' && !canAccessPath(currentPath, userRole)) {
     // Redirect to appropriate dashboard for their role
     const redirectPath = getRoleRedirect(userRole);
+    console.log('[DASHBOARD_LAYOUT] RBAC redirect:', { currentPath, userRole, redirectPath });
     redirect(redirectPath);
   }
 
   // 5. If accessing dashboard index, redirect based on role
   if (currentPath === '/dashboard') {
     const redirectPath = getRoleRedirect(userRole);
+    console.log('[DASHBOARD_LAYOUT] Index redirect:', { currentPath, userRole, redirectPath });
     redirect(redirectPath);
   }
 
